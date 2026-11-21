@@ -1,0 +1,123 @@
+name: Warder Radio ALL fixes and enhancements 0.2.1-2 private test IPK
+
+on:
+  push:
+    branches: [feature/radio-browser-country-bouquets-and-logo-zips-20261119]
+    paths:
+      - .github/workflows/radio-all-fixes-0212-test-ipk.yml
+      - tools/verify_021_full_test_upgrade.py
+      - src/**
+      - tests/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  complete-private-receiver-candidate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      PYTHONPATH: src:tools
+      PYTHONDONTWRITEBYTECODE: '1'
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install required native test parsers and PIL
+        run: python3 -m pip install --quiet 'Pillow>=10,<13' 'defusedxml>=0.7,<1' 'pycountry>=24,<30'
+      - name: Ensure all major previously completed runtime improvements exist in THIS branch
+        run: |
+          set -euo pipefail
+          test "$(cat src/WarderRadio/version.txt)" = 0.2.1
+          test -f src/WarderRadio/screensaver.py
+          test -f src/WarderRadio/homepage_logos.py
+          test -f src/WarderRadio/curated_station_logos.py
+          test -f src/WarderRadio/logo_source_guard.py
+          test -f src/WarderRadio/svg_logos.py
+          test -f src/WarderRadio/radio_browser.py
+          test -f src/WarderRadio/station_logos.py
+          test -f src/WarderRadio/recording.py
+          test -f src/WarderRadio/warder_update.py
+          grep -q 'show_main_menu' src/WarderRadio/plugin.py
+          grep -q 'screensaver_delay' src/WarderRadio/model.py
+          grep -q 'WHERE_MENU' src/WarderRadio/plugin.py
+          python3 -m compileall -q src tools tests
+          echo 'Merged latest stable player, optional menu, saver and current PR52 artwork-source fixes: PRESENT'
+      - name: Build one architecture-independent complete 0.2.1-2 TEST IPK, no release
+        run: |
+          set -euo pipefail
+          python3 tools/build_ipk.py --package-revision 2
+          python3 tools/verify_ipk.py
+          test "$(python3 -c "import json;print(json.load(open('dist/build.json'))['version'])")" = "0.2.1-2"
+          python3 - <<'PY'
+          import json,hashlib,pathlib,os
+          p=pathlib.Path('dist')
+          b=json.loads((p/'build.json').read_text())
+          assert b['bytes']<10_000_000, 'Keep massive country picons separate to avoid full flash'
+          assert hashlib.sha256((p/b['file']).read_bytes()).hexdigest()==b['sha256']
+          proof=dict(build_sha=os.environ['GITHUB_SHA'],branch=os.environ['GITHUB_REF_NAME'],
+                     package=b,source='latest Radio Warder Evolution 0.2.1 + feature PR #52',
+                     includes=['native player and Enigma2 navigation','settings, favourites, history',
+                       'optional main menu entry','black OLED screensaver',
+                       'cover and artist/song information','recording and streamripper',
+                       'radio station artwork SVG and secure homepage fallback',
+                       'radio browser browsing and country switching','all 21 translations'],
+                     world_logo_library='Separate 224-country REVIEW archive, NOT bundled into IPK',
+                     production_release=False,production_feed=False)
+          (p/'complete-test-proof.json').write_text(json.dumps(proof,indent=2,sort_keys=True)+'\n')
+          print('TEST IPK',b['file'],b['sha256'],b['bytes'])
+          PY
+      - name: Full runtime, logo, navigation, OLED screensaver and offline source QA unit suite
+        run: |
+          python3 -m unittest discover -s tests -v > dist/complete-unittest.log 2>&1 || {
+            tail -130 dist/complete-unittest.log
+            exit 1
+          }
+          tail -8 dist/complete-unittest.log
+      - name: Replay native OpenPLi 9.2 and OpenATV 8.0 / 8.1
+        run: |
+          set -euo pipefail
+          python3 tools/fetch_native.py
+          python3 tools/test_native.py --upstream fixtures/openpli-release-9.2 -v > dist/native-openpli92.log 2>&1 || { tail -100 dist/native-openpli92.log; exit 1; }
+          python3 tools/test_native.py --upstream fixtures/openatv-81-reviewed-base -v > dist/native-openatv81.log 2>&1 || { tail -100 dist/native-openatv81.log; exit 1; }
+          python3 tools/test_native.py --upstream fixtures/openatv-8.0-next -v > dist/native-openatv80.log 2>&1 || { tail -100 dist/native-openatv80.log; exit 1; }
+          echo 'Native Enigma2 screen, navigation and keyboard replays: PASS'
+      - name: Build offline opkg and verify actual stable 0.2.1 to complete test 0.2.1-2 upgrade
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq autoconf automake libtool pkg-config libarchive-dev libssl-dev
+          mkdir -p dist/stable-021
+          gh release download warder-radio-v0.2.1 -p '*.ipk' -p SHA256SUMS -D dist/stable-021
+          (cd dist/stable-021 && sha256sum --check SHA256SUMS)
+          sh tools/build_host_opkg.sh /tmp/warder-0212-test-opkg cc330e2a5e311fa99ead37f6e439599a2a0909a0
+          python3 tools/verify_021_full_test_upgrade.py \
+            --opkg /tmp/warder-0212-test-opkg/src/opkg \
+            --stable dist/stable-021/enigma2-plugin-extensions-radio-warder-evolution_0.2.1_all.ipk \
+            --candidate dist/enigma2-plugin-extensions-radio-warder-evolution_0.2.1-2_all.ipk \
+            > dist/stable-to-complete-test-upgrade.log 2>&1 || {
+              cat dist/stable-to-complete-test-upgrade.log
+              exit 1
+            }
+          cat dist/stable-to-complete-test-upgrade.log
+          rm -rf dist/stable-021
+      - name: Upload complete TEST IPK and exact checksums, no GitHub release or feed writes
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: warder-radio-COMPLETE-all-fixes-0.2.1-2-TEST-ONLY
+          path: |
+            dist/enigma2-plugin-extensions-radio-warder-evolution_0.2.1-2_all.ipk
+            dist/SHA256SUMS
+            dist/build.json
+            dist/complete-test-proof.json
+            dist/complete-unittest.log
+            dist/native-openpli92.log
+            dist/native-openatv81.log
+            dist/native-openatv80.log
+            dist/stable-to-complete-test-upgrade.log
+          if-no-files-found: error
+          retention-days: 30
