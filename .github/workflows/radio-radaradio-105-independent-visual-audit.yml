@@ -1,0 +1,136 @@
+name: Independently audit 105 RadaRadio country original candidates and create visual QA sheets
+on:
+  push:
+    branches: [feature/radio-browser-country-bouquets-and-logo-zips-20261119]
+    paths:
+      - .github/workflows/radio-radaradio-105-independent-visual-audit.yml
+permissions:
+  contents: read
+  actions: read
+jobs:
+  independent-candidate-audit-and-visual-sheets:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      GH_TOKEN: ${{ github.token }}
+      ROOT: /tmp/warder-radaradio-105-audit
+      OLD_SHA: a3237e7d3ee5218eee4b30b6bff15c73e384657d17d8b8fb28fa21a690e4863b
+      NEW_SHA: ed8928350a6b5270ef1871b0196630082572f9105977667fdb4cc5b19ed28d0a
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install image inspection tools
+        run: python3 -m pip install --quiet 'Pillow>=10,<13'
+      - name: Fetch real signed original and revised 224-country review archives
+        run: |
+          set -euo pipefail
+          mkdir -p "$ROOT"/{old,new,qa}
+          test "$(gh run view 44924578609 --json conclusion -q .conclusion)" = success
+          test "$(gh run view 44939735947 --json conclusion -q .conclusion)" = success
+          gh run download 44924578609 -n radio-independent-two-67k-directories-one-global-visually-approved-REVIEW-ONLY -D "$ROOT/old"
+          gh run download 44939735947 -n radio-radaradio-7451-one-global-224-review-not-production -D "$ROOT/new"
+          cp "$(find "$ROOT/old" -type f -name radio-countries-bouquets.zip | head -1)" "$ROOT/old-world.zip"
+          cp "$ROOT/new/new-world/radio-countries-bouquets.zip" "$ROOT/new-world.zip"
+          echo "$OLD_SHA  $ROOT/old-world.zip" | sha256sum --check
+          echo "$NEW_SHA  $ROOT/new-world.zip" | sha256sum --check
+      - name: Audit all world members, per-country SHA, every new PNG and prepare visual contact sheets
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,math,os, re
+          from pathlib import Path
+          from zipfile import ZipFile
+          from PIL import Image,ImageDraw,ImageFont
+          root=Path(os.environ['ROOT']);qa=root/'qa'
+          source=json.loads((root/'new/recovery/radaradio-7451-global-REVIEW.json').read_bytes())
+          assert source['schema']==2 and source['review_only'] is True
+          assert source['previous_world_sha256']==os.environ['OLD_SHA']
+          assert source['countries_scanned']==224 and source['stations']==48219
+          assert source['originals_before']==40768 and source['missing_before']==7451
+          new_pngs=source['candidate_images']
+          assert len(new_pngs)==source['new_candidate_png']==105
+          changes=source['per_country_additions'];assert len(changes)==30 and sum(changes.values())==105
+          assert source['new_total_candidate_png']==40873 and source['missing_after_candidate']==7346
+          assert source['visual_review_required'] is True and not source['production_published']
+          with ZipFile(root/'old-world.zip') as old, ZipFile(root/'new-world.zip') as new:
+              a=json.loads(old.read('index.json'));b=json.loads(new.read('index.json'))
+              assert set(old.namelist())==set(new.namelist()) and len(b['countries'])==224
+              assert a['country_count']==b['country_count']==224
+              assert a['station_count']==b['station_count']==48219
+              assert sum(v['logos_found'] for v in a['countries'].values())==40768
+              assert sum(v['logos_found'] for v in b['countries'].values())==40873
+              assert set(a['countries'])==set(b['countries']) and set(changes)<=set(b['countries'])
+              changed={'index.json'}|{'manifests/'+c+'.json' for c in changes}
+              for name in old.namelist():
+                  if name not in changed:
+                      assert old.read(name)==new.read(name),name
+              for cc in b['countries']:
+                  x=a['countries'][cc];y=b['countries'][cc]
+                  assert x['stations']==y['stations']
+                  assert x['catalog_sha256']==y['catalog_sha256']
+                  assert x['bouquet_sha256']==y['bouquet_sha256']
+                  assert y['logos_found']-x['logos_found']==changes.get(cc,0)
+                  if cc not in changes:assert x==y
+                  else:
+                      manifest=json.loads(new.read('manifests/'+cc+'.json'))
+                      assert manifest['logos_found']==y['logos_found']
+                      assert manifest['logos_missing']==y['stations']-y['logos_found']
+                      assert manifest['files']['logos/'+cc+'.zip']['sha256']==y['logo_sha256']
+          per_country={};picture=[]
+          for i,rec in enumerate(sorted(new_pngs,key=lambda r:(r['country'],r['name'],r['uuid']))):
+              cc=rec['country']
+              assert rec['identity']=='exact_country_name_official_homepage'
+              assert rec['visual_review_required'] is True
+              assert re.fullmatch('[a-zA-Z0-9_-]{3,100}',rec['source_station_id'])
+              assert re.fullmatch('[0-9a-f]{64}',rec['image_source_sha256'])
+              assert re.fullmatch('[0-9a-f]{64}',rec['source_detail_sha256'])
+              assert re.fullmatch('[0-9a-f]{64}',rec['png_sha256'])
+              if cc not in per_country:
+                  f=root/'new/recovery/candidates'/('radio-country-'+cc+'-REVIEW-NOT-PRODUCTION')/'logos'/(cc+'.zip')
+                  assert f.is_file()
+                  assert hashlib.sha256(f.read_bytes()).hexdigest()==json.loads(
+                      ZipFile(root/'new-world.zip').read('index.json'))['countries'][cc]['logo_sha256']
+                  per_country[cc]=ZipFile(f)
+              raw=per_country[cc].read(rec['stem']+'.png')
+              assert hashlib.sha256(raw).hexdigest()==rec['png_sha256']
+              from io import BytesIO
+              with Image.open(BytesIO(raw)) as im:
+                  assert im.format=='PNG' and im.size==(224,224)
+                  thumb=im.convert('RGBA')
+                  picture.append((rec,thumb))
+          for archive in per_country.values():archive.close()
+          try:font=ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',13)
+          except OSError:font=ImageFont.load_default()
+          columns,rows=5,7
+          for first in range(0,len(picture),columns*rows):
+              sheet=Image.new('RGB',(columns*250,rows*225),'white')
+              draw=ImageDraw.Draw(sheet)
+              for offset,(record,thumb) in enumerate(picture[first:first+columns*rows]):
+                  x=(offset%columns)*250;y=(offset//columns)*225
+                  sheet.paste(thumb,(x+13,y+4),thumb)
+                  draw.text((x+6,y+166),record['country']+' • '+record['name'][:31],
+                            fill='black',font=font)
+                  draw.text((x+6,y+189),record['uuid'][:19],fill='#555555',font=font)
+              sheet.save(qa/('radaradio-contact-sheet-%02d.png'%(first//35+1)))
+          audit={"schema":1,"review_only":True,"source_run":44939735947,
+            "source_world_sha256":os.environ['OLD_SHA'],"new_world_sha256":os.environ['NEW_SHA'],
+            "countries":224,"station_references":48219,"previous_png":40768,
+            "new_candidate_png":105,"candidate_total_png":40873,"missing_after":7346,
+            "country_zip_changes":len(changes),"unchanged_world_catalogues_and_bouquets":224,
+            "new_image_source_sha_mapped":105,"new_png_sha_and_pixels_verified":105,
+            "sheets_created":math.ceil(len(picture)/35),"independent_visual_review_still_required":True,
+            "production_untouched":True}
+          (qa/'radaradio-105-independent-audit.json').write_text(
+              json.dumps(audit,indent=2,sort_keys=True)+'\n')
+          (qa/'radaradio-105-index.json').write_text(
+              json.dumps([{"country":r['country'],"name":r['name'],
+                  "uuid":r['uuid'],"png_sha256":r['png_sha256']} for r,_ in picture],
+                  ensure_ascii=False,indent=2)+'\n')
+          print('INDEPENDENT ACTUAL WORLD SHA AND 105 PNG AUDIT PASS',json.dumps(audit,sort_keys=True),flush=True)
+          PY
+      - name: Save compact 3-sheet original radio-logo visual QA; no release or production
+        uses: actions/upload-artifact@v4
+        with:
+          name: radaradio-105-originals-independent-audit-and-visual-contact-sheets
+          path: /tmp/warder-radaradio-105-audit/qa/
+          retention-days: 30
+          if-no-files-found: error
