@@ -28,7 +28,7 @@ jobs:
           gh run download 44924578609 -n radio-independent-two-67k-directories-one-global-visually-approved-REVIEW-ONLY -D "$ROOT/old"
           gh run download 44939735947 -n radio-radaradio-7451-one-global-224-review-not-production -D "$ROOT/source"
           gh run download 44941542756 -n radaradio-69-approved-all-224-country-originals-40837-REVIEW-ONLY -D "$ROOT/final"
-      - name: Fully independent byte audit: all 224 country metadata, all 30 ZIP members, only 36 new PNG deleted
+      - name: Fully independent byte audit of 224 country members and 36 exact visual removals
         run: |
           set -euo pipefail
           python3 - <<'PY'
