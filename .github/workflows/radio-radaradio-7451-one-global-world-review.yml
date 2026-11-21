@@ -1,0 +1,156 @@
+name: ONE all 224 countries 7451 gap RadaRadio original logo REVIEW world
+
+on:
+  push:
+    branches: [feature/radio-browser-country-bouquets-and-logo-zips-20261119]
+    paths:
+      - .github/workflows/radio-radaradio-7451-one-global-world-review.yml
+      - tools/recover_radaradio_7451_world.py
+      - tests/test_recover_radaradio_7451_world.py
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  one-global-224-source-and-merge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    env:
+      GH_TOKEN: ${{ github.token }}
+      ROOT: /tmp/warder-radaradio-7451-all-global
+      WORLD_SHA: a3237e7d3ee5218eee4b30b6bff15c73e384657d17d8b8fb28fa21a690e4863b
+    steps:
+      - uses: actions/checkout@v4
+      - name: Offline identity, private-IP, generic art, metadata and pagination tests
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet 'Pillow>=10,<13' 'pycountry>=24,<30' 'defusedxml>=0.7,<1'
+          PYTHONPATH=src:tools python3 -B tests/test_recover_radaradio_7451_world.py
+          PYTHONPATH=src:tools python3 -B tests/test_missing_radio_logo_recovery.py
+          python3 -m py_compile tools/recover_radaradio_7451_world.py
+      - name: Get only latest signed 40768 world; do not fetch existing station originals online
+        run: |
+          set -euo pipefail
+          mkdir -p "$ROOT"/{current,prior40393,prior40086,prior40013,prior39979,prior39964,prior39879,patch7,patch13,canonical,old}
+          for id in 44924578609 44919526717 44915726977 44914701701 44913642417 44911563049 44907110543 44907497364 44906253671 44801652426; do
+            test "$(gh run view "$id" --json conclusion -q .conclusion)" = success
+          done
+          gh run download 44924578609 -n radio-independent-two-67k-directories-one-global-visually-approved-REVIEW-ONLY -D "$ROOT/current"
+          cp "$(find "$ROOT/current" -type f -name radio-countries-bouquets.zip | head -1)" "$ROOT/world.zip"
+          echo "$WORLD_SHA  $ROOT/world.zip" | sha256sum --check
+          python3 - <<'PY'
+          import json,os
+          from zipfile import ZipFile
+          with ZipFile(os.path.join(os.environ['ROOT'],'world.zip')) as z:
+              idx=json.loads(z.read('index.json'))
+          assert (idx['country_count'],idx['station_count'])==(224,48219)
+          assert sum(x['logos_found'] for x in idx['countries'].values())==40768
+          assert 48219-40768==7451
+          print('40768 CURRENT 224-COUNTRY 7451-GAP REVIEW SOURCE VERIFIED',flush=True)
+          PY
+      - name: Restore entire 224-country current ORIGINAL ZIP inventory from historic signed review artifacts, no individual PNG refetches
+        run: |
+          set -euo pipefail
+          gh run download 44801652426 -p 'radio-canonical-39643-country-shard-*-REVIEW' -D "$ROOT/canonical"
+          gh run download 44919526717 -n radio-all-8133-gaps-one-global-visually-approved-world-REVIEW-ONLY -D "$ROOT/prior40393"
+          gh run download 44915726977 -n radio-tunein-second-73-visual-40086-world-REVIEW-ONLY -D "$ROOT/prior40086"
+          gh run download 44914701701 -n radio-tunein-34-visual-originals-40013-world-REVIEW-ONLY -D "$ROOT/prior40013"
+          gh run download 44913642417 -n radio-tef-15-visual-approved-39979-world-REVIEW-ONLY -D "$ROOT/prior39979"
+          gh run download 44911563049 -n radio-global-85-highres-originals-39964-world-REVIEW-ONLY -D "$ROOT/prior39964"
+          gh run download 44907110543 -n radio-six-visual-owner-originals-39879-world-REVIEW-ONLY -D "$ROOT/prior39879"
+          gh run download 44907497364 -n radio-final-seven-current-country-SHA-originals-REVIEW-ONLY -D "$ROOT/patch7"
+          gh run download 44906253671 -n radio-reconciled-20-stale-country-original-sha-REVIEW-ONLY -D "$ROOT/patch13"
+          python3 - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile
+          from collections import Counter
+          import hashlib,json,os,shutil
+          root=Path(os.environ["ROOT"])
+          with ZipFile(root/"world.zip") as archive:
+              idx=json.loads(archive.read("index.json"))
+          order=("current","prior40393","prior40086","prior40013","prior39979","prior39964",
+                 "prior39879","patch7","patch13","canonical")
+          available={}
+          for source in order:
+              inventory={}
+              for folder in (root/source).rglob("radio-country-??-REVIEW-NOT-PRODUCTION"):
+                  cc=folder.name.split("-")[2]
+                  f=folder/"logos"/(cc+".zip")
+                  if f.is_file() and not f.is_symlink():inventory.setdefault(cc,[]).append((folder,f))
+              available[source]=inventory
+          chosen=Counter()
+          for cc,meta in sorted(idx["countries"].items()):
+              selected=[]
+              for source in order:
+                  for folder,f in available[source].get(cc,[]):
+                      if hashlib.sha256(f.read_bytes()).hexdigest()==meta["logo_sha256"]:
+                          selected.append((source,folder,f))
+                  if selected:break
+              if len(selected)!=1:raise ValueError("No single current approved original country ZIP "+cc+":"+str(len(selected)))
+              source,folder,f=selected[0]
+              with ZipFile(f) as z:
+                  if len(z.namelist())!=meta["logos_found"] or len(z.namelist())!=len(set(z.namelist())):
+                      raise ValueError("Corrupt prior country original PNG ZIP "+cc)
+              shutil.copytree(folder,root/"old"/folder.name)
+              chosen[source]+=1
+          assert sum(chosen.values())==224
+          print("ALL 224 PREVIOUS ORIGINAL COUNTRY LOGO ZIPS SHA VERIFIED",dict(chosen),flush=True)
+          PY
+          rm -rf "$ROOT/current" "$ROOT/prior40393" "$ROOT/prior40086" "$ROOT/prior40013" "$ROOT/prior39979" "$ROOT/prior39964" "$ROOT/prior39879" "$ROOT/patch7" "$ROOT/patch13" "$ROOT/canonical"
+      - name: ONE independent catalog sweep over all 224 countries and all 7451 missing references
+        run: |
+          set -euo pipefail
+          PYTHONPATH=src:tools python3 -B tools/recover_radaradio_7451_world.py \
+            --world "$ROOT/world.zip" --old-root "$ROOT/old" --out "$ROOT/recovery"
+      - name: Independently verify candidate exact identity counts and build ONE global world if images recovered
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os,json
+          from pathlib import Path
+          root=Path(os.environ['ROOT'])
+          report=json.loads((root/'recovery/radaradio-7451-global-REVIEW.json').read_text())
+          assert report['schema']==1 and report['review_only']
+          assert report['previous_world_sha256']==os.environ['WORLD_SHA']
+          assert (report['countries_scanned'],report['stations'],report['originals_before'],report['missing_before'])==(224,48219,40768,7451)
+          assert report['new_candidate_png']==sum(report['per_country_additions'].values())
+          assert len(report['candidate_images'])==report['new_candidate_png']
+          assert all(x['identity']=='exact_country_name_stream' for x in report['candidate_images'])
+          (root/'codes.txt').write_text(','.join(sorted(report['per_country_additions'])))
+          print('ONE COMPLETE RadaRadio COUNTRY PASS',report['new_candidate_png'],'STRICT SOURCE CANDIDATES',flush=True)
+          PY
+          if test -s "$ROOT/codes.txt"; then
+            PYTHONPATH=src:tools python3 -B tools/assemble_recovered_radio_world.py \
+              --world "$ROOT/world.zip" --world-sha256 "$WORLD_SHA" \
+              --old-root "$ROOT/old" --candidates "$ROOT/recovery/candidates" \
+              --countries "$(cat "$ROOT/codes.txt")" --out "$ROOT/new-world"
+            python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          from zipfile import ZipFile
+          root=Path(os.environ['ROOT'])
+          source=json.loads((root/'recovery/radaradio-7451-global-REVIEW.json').read_text())
+          audit=json.loads((root/'new-world/world-recovery-review.json').read_text())
+          assert audit['review_only'] and audit['logos_added']==source['new_candidate_png']
+          assert (audit['country_count'],audit['station_count'])==(224,48219)
+          with ZipFile(root/'new-world/radio-countries-bouquets.zip') as z:
+              idx=json.loads(z.read('index.json'))
+          assert sum(x['logos_found'] for x in idx['countries'].values())==40768+source['new_candidate_png']
+          assert audit['new_world_sha256']==hashlib.sha256((root/'new-world/radio-countries-bouquets.zip').read_bytes()).hexdigest()
+          print('COMPLETE NEW 224-COUNTRY WORLD SHA',audit['new_world_sha256'],flush=True)
+          PY
+          else
+            echo "No independently matched new source artwork; keep existing world immutable."
+          fi
+      - name: Save one single review artifact with original QA evidence and optional all-world ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: radio-radaradio-7451-one-global-224-review-not-production
+          path: |
+            /tmp/warder-radaradio-7451-all-global/recovery/
+            /tmp/warder-radaradio-7451-all-global/new-world/
+          retention-days: 30
+          compression-level: 0
+          if-no-files-found: error
