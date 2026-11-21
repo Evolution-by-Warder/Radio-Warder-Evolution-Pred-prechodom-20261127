@@ -52,4 +52,20 @@ jobs:
                           except Exception as e:
                               print('DETAIL ERROR',type(e).__name__,str(e)[:200],flush=True)
               except Exception as e:print('SOURCE ERROR',cc,type(e).__name__,str(e)[:200],flush=True)
+          for cc in ('DE','US'):
+              print('PAGING COUNTRY',cc,flush=True)
+              for opts in ({'country':cc,'limit':250,'page':1},
+                           {'country':cc,'limit':250,'page':2},
+                           {'country':cc,'limit':250,'offset':250},
+                           {'country':cc,'limit':1000,'page':1}):
+                  try:
+                      url='https://radaradio.com/api/radios?'+urlencode(opts)
+                      with urlopen(Request(url,headers={'User-Agent':'WarderRadioSourceContractReview/1.0','Accept':'application/json'}),timeout=10) as res:
+                          doc=json.load(res)
+                      if isinstance(doc,list):vals=doc
+                      elif isinstance(doc,dict):
+                          vals=next((v for v in doc.values() if isinstance(v,list)),[])
+                      else:vals=[]
+                      print('PAGING SHAPE',opts,'count',len(vals),'firstIds',[x.get('id') for x in vals[:3] if isinstance(x,dict)],flush=True)
+                  except Exception as e:print('PAGING ERROR',opts,type(e).__name__,str(e)[:130],flush=True)
           PY
