@@ -77,5 +77,6 @@
     "ff54c31f-de64-4622-bd22-0e0c8cd31f22": "eldoradio* logo shows eldoradio FM base service only, not star channel"
   },
   "review_scope": "All 10 image contact sheets individually inspected and each of 442 images decided. 67 visually generic/wrong/station-variant images quarantined; 375 approved images must independently pass pinned per-UUID source PNG SHA, exact radio station name, country, stream or homepage before entering review.",
-  "publication": "Draft PR #52 REVIEW ONLY; no main, Release, latest.json or IPK."
+  "publication": "Draft PR #52 REVIEW ONLY; no main, Release, latest.json or IPK.",
+  "verification_note": "All accepted SHA values are bound per exact radio station UUID from the immutable 442-image review. Correct count check uses accepted UUID set."
 }
