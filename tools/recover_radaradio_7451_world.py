@@ -174,7 +174,7 @@ def inventory(world,root):
         for row in rows:
             if row["stem"]+".png" in originals:continue
             targets[cc].append({"country":cc,"uuid":row["stationuuid"],"name":row["name"],
-                                "stem":row["stem"],"stream":row["url"]})
+                                "stem":row["stem"],"stream":row["url"],"homepage":row.get("homepage") or ""})
             missing+=1
     if missing!=EXPECTED_MISSING:raise ValueError("Previous 7451 gap checkpoint mismatch")
     return index,targets,previous
