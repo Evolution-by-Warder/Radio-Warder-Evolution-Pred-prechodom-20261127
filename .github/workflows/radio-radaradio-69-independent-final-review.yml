@@ -1,0 +1,142 @@
+name: Independent final full world 40837 radio originals vs raw candidate PNG REVIEW
+on:
+  push:
+    branches: [feature/radio-browser-country-bouquets-and-logo-zips-20261119]
+    paths: [.github/workflows/radio-radaradio-69-independent-final-review.yml]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  independent-proof-of-all-existing-and-69-new-png:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      GH_TOKEN: ${{ github.token }}
+      ROOT: /tmp/radaradio-independent-final-69
+      ORIGINAL_SHA: a3237e7d3ee5218eee4b30b6bff15c73e384657d17d8b8fb28fa21a690e4863b
+      SOURCE_SHA: ed8928350a6b5270ef1871b0196630082572f9105977667fdb4cc5b19ed28d0a
+      FINAL_SHA: 771953b41ceab46f8852f5e3219338cb1369d7f653ed7d329ad551e481f88d68
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download all three actually signed old/candidate/final world assets and their country PNGs
+        run: |
+          set -euo pipefail
+          mkdir -p "$ROOT"/{old,source,final,audit}
+          for id in 44924578609 44939735947 44940434908 44941542756; do
+            test "$(gh run view "$id" --json conclusion -q .conclusion)" = success
+          done
+          gh run download 44924578609 -n radio-independent-two-67k-directories-one-global-visually-approved-REVIEW-ONLY -D "$ROOT/old"
+          gh run download 44939735947 -n radio-radaradio-7451-one-global-224-review-not-production -D "$ROOT/source"
+          gh run download 44941542756 -n radaradio-69-approved-all-224-country-originals-40837-REVIEW-ONLY -D "$ROOT/final"
+      - name: Fully independent byte audit: all 224 country metadata, all 30 ZIP members, only 36 new PNG deleted
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from zipfile import ZipFile
+          from pathlib import Path
+          from collections import defaultdict,Counter
+          import hashlib,json,os
+          root=Path(os.environ['ROOT'])
+          def unique(base,pattern):
+              matches=list((root/base).rglob(pattern))
+              if len(matches)!=1:raise ValueError(str(base)+' '+pattern+' must resolve exactly once: '+str(len(matches)))
+              return matches[0]
+          def sha(path):
+              h=hashlib.sha256()
+              with path.open('rb') as f:
+                  for part in iter(lambda:f.read(1<<20),b''):h.update(part)
+              return h.hexdigest()
+          oldp=unique('old','radio-countries-bouquets.zip')
+          sourcep=unique('source','radio-countries-bouquets.zip')
+          finalp=unique('final','radio-countries-bouquets.zip')
+          for p,key in ((oldp,'ORIGINAL_SHA'),(sourcep,'SOURCE_SHA'),(finalp,'FINAL_SHA')):
+              assert sha(p)==os.environ[key],key
+          s=json.loads(unique('source','radaradio-7451-global-REVIEW.json').read_bytes())
+          decision=json.loads(unique('final','radaradio-105-visual-decisions-20261121.json').read_bytes())
+          result=json.loads(unique('final','radaradio-69-visual-approval-review.json').read_bytes())
+          candidates={r['uuid']:r for r in s['candidate_images']}
+          rejected={r['stationuuid'] for r in decision['visual_rejected']}
+          assert len(candidates)==105 and len(rejected)==36 and rejected<=set(candidates)
+          accepted=set(candidates)-rejected
+          assert len(accepted)==69
+          assert result['world_png']==40837 and result['still_missing']==7382
+          assert result['visually_approved_new_png']==69 and result['visually_rejected_png']==36
+          with ZipFile(oldp) as old,ZipFile(sourcep) as source,ZipFile(finalp) as final:
+              oi=json.loads(old.read('index.json'));si=json.loads(source.read('index.json'))
+              fi=json.loads(final.read('index.json'))
+              assert (oi['country_count'],oi['station_count'])==(224,48219)
+              assert set(old.namelist())==set(source.namelist())==set(final.namelist())
+              assert (sum(x['logos_found'] for x in oi['countries'].values()),
+                      sum(x['logos_found'] for x in si['countries'].values()),
+                      sum(x['logos_found'] for x in fi['countries'].values()))==(40768,40873,40837)
+              changed=set(s['per_country_additions'])
+              assert len(changed)==30
+              altered={'index.json'}|{'manifests/'+cc+'.json' for cc in changed}
+              for file in old.namelist():
+                  if file not in altered:
+                      assert old.read(file)==source.read(file)==final.read(file),file
+              for cc in sorted(oi['countries']):
+                  x,y,z=(index['countries'][cc] for index in (oi,si,fi))
+                  assert x['stations']==y['stations']==z['stations']
+                  assert x['catalog_sha256']==y['catalog_sha256']==z['catalog_sha256']
+                  assert x['bouquet_sha256']==y['bouquet_sha256']==z['bouquet_sha256']
+                  if cc not in changed:assert x==y==z
+          total_source=total_final=total_removed=total_kept=0
+          real_changed=0;country_report=[]
+          for cc in sorted(changed):
+              old_source_archive=unique('source','radio-country-'+cc+'-REVIEW-NOT-PRODUCTION/logos/'+cc+'.zip')
+              approved_archive=unique('final','radio-country-'+cc+'-REVIEW-NOT-PRODUCTION/logos/'+cc+'.zip')
+              assert sha(old_source_archive)==si['countries'][cc]['logo_sha256']
+              assert sha(approved_archive)==fi['countries'][cc]['logo_sha256']
+              removed={r['stem']+'.png' for uuid,r in candidates.items()
+                       if r['country']==cc and uuid in rejected}
+              accepted_cc={r['stem']+'.png' for uuid,r in candidates.items()
+                           if r['country']==cc and uuid in accepted}
+              assert not removed&accepted_cc
+              with ZipFile(old_source_archive) as before,ZipFile(approved_archive) as after:
+                  names=set(before.namelist());kept=set(after.namelist())
+                  assert len(names)==si['countries'][cc]['logos_found']
+                  assert len(kept)==fi['countries'][cc]['logos_found']
+                  assert names-kept==removed
+                  assert kept-names==set()
+                  for name in kept:
+                      assert before.read(name)==after.read(name),cc+'/'+name
+                  for uuid,rec in candidates.items():
+                      if rec['country']!=cc:continue
+                      name=rec['stem']+'.png'
+                      assert hashlib.sha256(before.read(name)).hexdigest()==rec['png_sha256']
+                      if uuid in accepted:assert name in kept
+                      else:assert name not in kept
+                  total_source+=len(names);total_final+=len(kept)
+                  total_removed+=len(removed);total_kept+=len(accepted_cc)
+              if len(accepted_cc)>0:real_changed+=1
+              country_report.append({"cc":cc,"raw_candidate_png":len(accepted_cc)+len(removed),
+                  "visual_approved":len(accepted_cc),"visual_rejected":len(removed),
+                  "source_country_SHA":si['countries'][cc]['logo_sha256'],
+                  "approved_country_SHA":fi['countries'][cc]['logo_sha256']})
+          assert (total_removed,total_kept,real_changed)==(36,69,26)
+          assert all(item['cc'] in fi['countries'] for item in country_report)
+          audit={"schema":1,"review_only":True,"source_run":44939735947,
+                 "visually_reviewed_run":44941542756,"original_world_sha256":sha(oldp),
+                 "source_world_sha256":sha(sourcep),"final_world_sha256":sha(finalp),
+                 "station_references":48219,"countries":224,"old_png_preserved":40768,
+                 "new_original_png_visually_approved":69,"quarantined_wrong_png":36,
+                 "final_originals":40837,"still_missing":7382,
+                 "countries_with_real_new_artwork":real_changed,
+                 "country_archives_compared_byte_by_byte":len(changed),
+                 "every_kept_png_identical_to_raw_candidate":True,
+                 "every_deleted_png_exactly_one_rejected_UUID":True,
+                 "all_224_catalogues_and_bouquets_unchanged":True,
+                 "production_untouched":True,"country_changes":country_report}
+          output=root/'audit/final-world-40837-independent-original-png-audit.json'
+          output.write_text(json.dumps(audit,indent=2,sort_keys=True)+'\n')
+          print('INDEPENDENT FINAL WORLD 40837 SOURCE-TO-APPROVED ORIGINAL PNG AUDIT SUCCESS',
+                json.dumps({k:v for k,v in audit.items() if k!='country_changes'},sort_keys=True),flush=True)
+          PY
+      - name: Upload tiny final audit evidence, never overwrite review or main
+        uses: actions/upload-artifact@v4
+        with:
+          name: radaradio-40837-independent-final-original-png-audit-PASS
+          path: /tmp/radaradio-independent-final-69/audit/
+          retention-days: 30
+          if-no-files-found: error
