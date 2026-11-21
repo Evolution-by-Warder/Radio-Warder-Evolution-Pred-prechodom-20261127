@@ -46,6 +46,20 @@ jobs:
           grep -q 'WHERE_MENU' src/WarderRadio/plugin.py
           python3 -m compileall -q src tools tests
           echo 'Merged latest stable player, optional menu, saver and current PR52 artwork-source fixes: PRESENT'
+      - name: First build 0.2.1 stable and both historical bridges for migration tests
+        run: |
+          set -euo pipefail
+          python3 tools/build_ipk.py
+          python3 tools/build_ipk.py --legacy-bridge
+          python3 tools/build_ipk.py --tester-bridge
+          python3 tools/verify_ipk.py
+      - name: Full runtime, logo, navigation, OLED screensaver and offline source QA unit suite
+        run: |
+          python3 -m unittest discover -s tests -v > dist/complete-unittest.log 2>&1 || {
+            tail -130 dist/complete-unittest.log
+            exit 1
+          }
+          tail -8 dist/complete-unittest.log
       - name: Build one architecture-independent complete 0.2.1-2 TEST IPK, no release
         run: |
           set -euo pipefail
@@ -70,13 +84,6 @@ jobs:
           (p/'complete-test-proof.json').write_text(json.dumps(proof,indent=2,sort_keys=True)+'\n')
           print('TEST IPK',b['file'],b['sha256'],b['bytes'])
           PY
-      - name: Full runtime, logo, navigation, OLED screensaver and offline source QA unit suite
-        run: |
-          python3 -m unittest discover -s tests -v > dist/complete-unittest.log 2>&1 || {
-            tail -130 dist/complete-unittest.log
-            exit 1
-          }
-          tail -8 dist/complete-unittest.log
       - name: Replay native OpenPLi 9.2 and OpenATV 8.0 / 8.1
         run: |
           set -euo pipefail
