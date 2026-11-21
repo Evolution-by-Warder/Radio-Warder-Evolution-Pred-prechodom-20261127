@@ -1,0 +1,42 @@
+name: RadaRadio public API source record structure check REVIEW
+on:
+  push:
+    branches: [feature/radio-browser-country-bouquets-and-logo-zips-20261119]
+    paths: [.github/workflows/radio-radaradio-record-contract-review.yml]
+permissions:
+  contents: read
+jobs:
+  read-only-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Report public read-only station response record keys and safe shortened examples
+        run: |
+          python3 - <<'PY'
+          from urllib.request import Request,urlopen
+          from urllib.parse import urlencode
+          import json
+          for cc in ('SK','DE','US','GB'):
+              url='https://radaradio.com/api/radios?'+urlencode({'country':cc,'limit':4})
+              try:
+                  req=Request(url,headers={'User-Agent':'WarderRadioSourceContractReview/1.0','Accept':'application/json'})
+                  with urlopen(req,timeout=10) as res:
+                      data=json.load(res)
+                  print('COUNTRY',cc,'RESPONSE',type(data).__name__,flush=True)
+                  if isinstance(data,dict):
+                      print('TOP KEYS',list(data.keys()),flush=True)
+                      for k,v in data.items():
+                          if isinstance(v,dict): print('NESTED',k,list(v.keys())[:30],flush=True)
+                      arr=next((v for v in data.values() if isinstance(v,list)),[])
+                      if not arr and isinstance(data.get('data'),dict):
+                          arr=next((v for v in data['data'].values() if isinstance(v,list)),[])
+                  else:arr=data if isinstance(data,list) else []
+                  print('RECORDS',len(arr),flush=True)
+                  for item in arr[:2]:
+                      if not isinstance(item,dict):continue
+                      print('STATION FIELDS', sorted(item),flush=True)
+                      sample={k:(v[:120] if isinstance(v,str) else v if isinstance(v,(int,bool,float)) else list(v)[:10] if isinstance(v,dict) else str(type(v).__name__))
+                          for k,v in item.items() if any(w in k.casefold() for w in ('stream','url','country','logo','image','favicon','name','title','web','home','station'))}
+                      print('STATION SAMPLE',json.dumps(sample,ensure_ascii=False)[:1800],flush=True)
+              except Exception as e:print('SOURCE ERROR',cc,type(e).__name__,str(e)[:200],flush=True)
+          PY
