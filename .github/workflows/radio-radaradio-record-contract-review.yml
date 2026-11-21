@@ -68,4 +68,13 @@ jobs:
                       else:vals=[]
                       print('PAGING SHAPE',opts,'count',len(vals),'firstIds',[x.get('id') for x in vals[:3] if isinstance(x,dict)],flush=True)
                   except Exception as e:print('PAGING ERROR',opts,type(e).__name__,str(e)[:130],flush=True)
+          for query,country in (('Radio Expres','SK'),('1LIVE','DE'),('KEXP','US')):
+              qurl='https://radaradio.com/api/radios?'+urlencode({'q':query,'country':country,'limit':30})
+              try:
+                  with urlopen(Request(qurl,headers={'User-Agent':'WarderRadioSourceContractReview/1.0','Accept':'application/json'}),timeout=12) as res:
+                      search=json.load(res)
+                  records=search if isinstance(search,list) else search.get('data',[])
+                  print('NAME SEARCH',country,query,'count',len(records),
+                        [(x.get('name'),x.get('country'),bool(x.get('logo'))) for x in records[:10]],flush=True)
+              except Exception as e:print('NAME ERROR',country,query,type(e).__name__,str(e)[:150],flush=True)
           PY
