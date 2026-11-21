@@ -38,5 +38,18 @@ jobs:
                       sample={k:(v[:120] if isinstance(v,str) else v if isinstance(v,(int,bool,float)) else list(v)[:10] if isinstance(v,dict) else str(type(v).__name__))
                           for k,v in item.items() if any(w in k.casefold() for w in ('stream','url','country','logo','image','favicon','name','title','web','home','station'))}
                       print('STATION SAMPLE',json.dumps(sample,ensure_ascii=False)[:1800],flush=True)
+                      if item is arr[0] and item.get('id'):
+                          detail_url='https://radaradio.com/api/radios/'+str(item['id'])
+                          try:
+                              with urlopen(Request(detail_url,headers={'User-Agent':'WarderRadioSourceContractReview/1.0','Accept':'application/json'}),timeout=10) as detail_res:
+                                  detail=json.load(detail_res)
+                              print('STATION DETAIL KEYS',sorted(detail) if isinstance(detail,dict) else type(detail).__name__,flush=True)
+                              if isinstance(detail,dict):
+                                  for k,v in detail.items():
+                                      if isinstance(v,dict): print('DETAIL NESTED',k,list(v)[:30],flush=True)
+                                      if any(p in k.casefold() for p in ('stream','url','home','website','link','source','audio')):
+                                          print('DETAIL VAL',k,str(v)[:180],flush=True)
+                          except Exception as e:
+                              print('DETAIL ERROR',type(e).__name__,str(e)[:200],flush=True)
               except Exception as e:print('SOURCE ERROR',cc,type(e).__name__,str(e)[:200],flush=True)
           PY
