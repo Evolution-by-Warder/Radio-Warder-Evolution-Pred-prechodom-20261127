@@ -1,0 +1,151 @@
+name: Independently verify one global 40768 original radio PNG REVIEW world against 40393 past ZIP
+on:
+  push:
+    branches: [feature/radio-browser-country-bouquets-and-logo-zips-20261119]
+    paths:
+      - .github/workflows/radio-independent-40768-original-world-audit.yml
+permissions:
+  contents: read
+  actions: read
+jobs:
+  all-world-second-proof:
+    runs-on: ubuntu-latest
+    timeout-minutes: 65
+    env:
+      GH_TOKEN: ${{ github.token }}
+      ROOT: /tmp/warder-independent-40768-world
+      OLD_SHA: 77046ae8486360552fac917977dfd165fcca2af133a3d669227b07ba86258633
+      NEW_SHA: a3237e7d3ee5218eee4b30b6bff15c73e384657d17d8b8fb28fa21a690e4863b
+      SOURCE_SHA: e8fb055bf82b06c231f0c32005d4a6b7c2918b6b0f31c910e82e162832d7c0bd
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test strict station artwork owner, SHA and immutable-world guards
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet 'Pillow>=10,<13' 'pycountry>=24,<30' 'defusedxml>=0.7,<1'
+          PYTHONPATH=src:tools python3 -B tests/test_merge_two_directory_7826_originals.py
+          PYTHONPATH=src:tools python3 -B tests/test_stage_two_independent_radio_directories_all_7826.py
+          PYTHONPATH=src:tools python3 -B tests/test_assemble_recovered_radio_world.py
+      - name: Download actual prior 634MB world, latest 706MB world, and all 442 source images from existing immutable review artifacts
+        run: |
+          set -euo pipefail
+          mkdir -p "$ROOT"/{old,new,stage,proof}
+          for id in 44919526717 44924578609 44923235008; do
+            test "$(gh run view "$id" --json conclusion -q .conclusion)" = success
+          done
+          gh run download 44919526717 -n radio-all-8133-gaps-one-global-visually-approved-world-REVIEW-ONLY -D "$ROOT/old"
+          gh run download 44924578609 -n radio-independent-two-67k-directories-one-global-visually-approved-REVIEW-ONLY -D "$ROOT/new"
+          gh run download 44923235008 -n radio-all-7826-radionet-firstparty-UNAPPROVED-REVIEW -D "$ROOT/stage"
+      - name: Independently verify ALL 224 catalogues/bouquets, EXACT 56 new country logo ZIPs and all 375 SHA-bound source originals
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,hashlib,os,sys
+          from pathlib import Path
+          from zipfile import ZipFile
+          root=Path(os.environ["ROOT"])
+          def digest(p):
+              h=hashlib.sha256()
+              with p.open("rb") as f:
+                  for data in iter(lambda:f.read(262144),b""):h.update(data)
+              return h.hexdigest()
+          olds=list((root/"old").rglob("radio-countries-bouquets.zip"))
+          news=list((root/"new").rglob("radio-countries-bouquets.zip"))
+          assert len(olds)==len(news)==1,(olds,news)
+          prior,new=olds[0],news[0]
+          assert digest(prior)==os.environ["OLD_SHA"]
+          assert digest(new)==os.environ["NEW_SHA"]
+          srcfile=root/"stage/all-7826-two-directory-original-images-REVIEW.json"
+          assert digest(srcfile)==os.environ["SOURCE_SHA"]
+          sys.path.insert(0,"tools")
+          import merge_two_directory_7826_originals as m
+          source,approval,selected=m.approved_images(
+              root/"stage","review/two-independent-directory-7826-original-logo-decisions.json")
+          assert len(source["images"])==442
+          assert len(approval["approved"])==375 and len(approval["rejected"])==67
+          assert len(selected)==56
+          new_reports=list((root/"new").rglob("world-recovery-review.json"))
+          merge_reports=list((root/"new").rglob("new-two-provider-radio-originals-visual-merge-REVIEW.json"))
+          assert len(new_reports)==len(merge_reports)==1
+          report=json.loads(new_reports[0].read_bytes())
+          merged=json.loads(merge_reports[0].read_bytes())
+          assert report["logos_added"]==merged["images_approved"]==375
+          assert merged["images_rejected"]==67 and merged["source_images_reviewed"]==442
+          assert report["original_world_sha256"]==os.environ["OLD_SHA"]
+          assert (report["country_count"],report["station_count"])==(224,48219)
+          assert merged["source_stage_sha256"]==os.environ["SOURCE_SHA"]
+          changed={r["country"]:r for r in report["countries_changed"]}
+          assert len(changed)==56 and set(changed)==set(selected)
+          changed_world_members=[]
+          with ZipFile(prior) as original,ZipFile(new) as fresh:
+              oldnames=original.namelist()
+              newnames=fresh.namelist()
+              assert len(set(oldnames))==len(oldnames)
+              assert len(set(newnames))==len(newnames)
+              assert set(oldnames)==set(newnames)
+              oldidx=json.loads(original.read("index.json"))
+              newidx=json.loads(fresh.read("index.json"))
+              assert (oldidx["country_count"],oldidx["station_count"])==(224,48219)
+              assert (newidx["country_count"],newidx["station_count"])==(224,48219)
+              assert sum(z["logos_found"] for z in oldidx["countries"].values())==40393
+              assert sum(z["logos_found"] for z in newidx["countries"].values())==40768
+              for path in oldnames:
+                  if original.read(path)!=fresh.read(path):
+                      changed_world_members.append(path)
+              assert set(changed_world_members)==({"index.json"}|{"manifests/"+c+".json" for c in changed})
+              for cc,old in oldidx["countries"].items():
+                  newmeta=newidx["countries"][cc]
+                  assert newmeta["stations"]==old["stations"]
+                  assert original.read("catalog/"+cc+".json")==fresh.read("catalog/"+cc+".json")
+                  assert original.read("bouquets/"+cc+".radio")==fresh.read("bouquets/"+cc+".radio")
+                  if cc not in changed:
+                      assert newmeta==old
+                  else:
+                      assert newmeta["logos_found"]-old["logos_found"]==changed[cc]["added"]
+          checked=0
+          for cc,rows in sorted(selected.items()):
+              folder=list((root/"new").rglob("radio-country-"+cc+"-REVIEW-NOT-PRODUCTION"))
+              archives=[f/"logos"/(cc+".zip") for f in folder]
+              valid=[f for f in archives if f.is_file() and digest(f)==newidx["countries"][cc]["logo_sha256"]]
+              assert len(valid)==1,(cc,folder)
+              with ZipFile(valid[0]) as z:
+                  names=z.namelist()
+                  assert len(set(names))==len(names)==newidx["countries"][cc]["logos_found"]
+                  for station,image in rows:
+                      member=station["stem"]+".png"
+                      actual=z.read(member)
+                      assert actual==image
+                      assert hashlib.sha256(actual).hexdigest()==approval["approved"][station["stationuuid"]]
+                      checked+=1
+          assert checked==375 and 48219-40768==7451
+          proof={
+              "schema":1,"review_only":True,
+              "original_country_count":224,"station_references":48219,
+              "old_world_sha256":os.environ["OLD_SHA"],
+              "new_world_sha256":os.environ["NEW_SHA"],
+              "original_png_before":40393,"new_original_png":375,
+              "original_png_after":40768,"remaining_missing_origins":7451,
+              "independent_image_corpus":442,"wrong_or_generic_images_quarantined":67,
+              "new_country_original_ZIPs_sha_verified":56,
+              "new_original_station_UUID_PNG_SHA_verified":checked,
+              "new_world_changed_members":changed_world_members,
+              "all_224_catalogues_and_bouquets_byte_identical":True,
+              "all_nonchanged_country_manifests_byte_identical":True,
+              "original_existing_png_unchanged_per_build_preservation":True,
+              "source_image_report_sha256":os.environ["SOURCE_SHA"],
+              "changed_country_counts":{cc:{"before":oldidx["countries"][cc]["logos_found"],
+                "added":len(rows),"after":newidx["countries"][cc]["logos_found"]} for cc,rows in selected.items()}
+          }
+          out=root/"proof/radio-independent-40768-global-originals-proof.json"
+          out.write_text(json.dumps(proof,ensure_ascii=False,sort_keys=True,indent=2)+"\n")
+          print("INDEPENDENT ALL-WORLD 40768 PNG +375 EXACT SOURCE PROOF PASS",json.dumps(
+              {k:v for k,v in proof.items() if k not in ("new_world_changed_members","changed_country_counts")},
+              sort_keys=True),flush=True)
+          PY
+      - name: Save compact independent audit report only - no duplicate huge binary or production publication
+        uses: actions/upload-artifact@v4
+        with:
+          name: radio-40768-independent-world-original-SHA-REVIEW-ONLY
+          path: /tmp/warder-independent-40768-world/proof/
+          retention-days: 30
+          if-no-files-found: error
