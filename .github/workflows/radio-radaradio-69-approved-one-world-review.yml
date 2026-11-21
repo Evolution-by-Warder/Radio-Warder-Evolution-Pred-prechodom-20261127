@@ -1,0 +1,98 @@
+name: ONE 224-country 69 visually approved RadaRadio original world REVIEW
+on:
+  push:
+    branches: [feature/radio-browser-country-bouquets-and-logo-zips-20261119]
+    paths:
+      - .github/workflows/radio-radaradio-69-approved-one-world-review.yml
+      - tools/prune_radaradio_visual_105_originals.py
+      - tests/test_prune_radaradio_visual_105_originals.py
+      - review/radaradio-105-visual-decisions-20261121.json
+permissions:
+  contents: read
+  actions: read
+jobs:
+  one-signed-global-visual-approved-world:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      GH_TOKEN: ${{ github.token }}
+      ROOT: /tmp/radaradio-69-approved-complete-world
+      OLD_SHA: a3237e7d3ee5218eee4b30b6bff15c73e384657d17d8b8fb28fa21a690e4863b
+      CANDIDATE_SHA: ed8928350a6b5270ef1871b0196630082572f9105977667fdb4cc5b19ed28d0a
+    steps:
+      - uses: actions/checkout@v4
+      - name: Offline negative visual-decision UUID and SHA tests
+        run: |
+          set -euo pipefail
+          PYTHONPATH=src:tools python3 -B tests/test_prune_radaradio_visual_105_originals.py
+          PYTHONPATH=src:tools python3 -B tests/test_assemble_recovered_radio_world.py
+          python3 -m py_compile tools/prune_radaradio_visual_105_originals.py
+      - name: Download actual last signed 40768 old world and 40873 raw source candidate world
+        run: |
+          set -euo pipefail
+          mkdir -p "$ROOT"/{old,new}
+          test "$(gh run view 44924578609 --json conclusion -q .conclusion)" = success
+          test "$(gh run view 44939735947 --json conclusion -q .conclusion)" = success
+          test "$(gh run view 44940434908 --json conclusion -q .conclusion)" = success
+          gh run download 44924578609 -n radio-independent-two-67k-directories-one-global-visually-approved-REVIEW-ONLY -D "$ROOT/old"
+          gh run download 44939735947 -n radio-radaradio-7451-one-global-224-review-not-production -D "$ROOT/new"
+          cp "$(find "$ROOT/old" -type f -name radio-countries-bouquets.zip | head -1)" "$ROOT/old-world.zip"
+          cp "$ROOT/new/new-world/radio-countries-bouquets.zip" "$ROOT/candidate-world.zip"
+          echo "$OLD_SHA  $ROOT/old-world.zip" | sha256sum --check
+          echo "$CANDIDATE_SHA  $ROOT/candidate-world.zip" | sha256sum --check
+      - name: One hard-verified 224-country visual prune, never remove the 40768 existing PNG
+        run: |
+          set -euo pipefail
+          PYTHONPATH=src:tools python3 -B tools/prune_radaradio_visual_105_originals.py \
+            --old-world "$ROOT/old-world.zip" \
+            --new-world "$ROOT/candidate-world.zip" \
+            --stage "$ROOT/new/recovery" \
+            --decisions review/radaradio-105-visual-decisions-20261121.json \
+            --out "$ROOT/approved"
+      - name: Independent accepted-only world member and country-original counts
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,hashlib
+          from pathlib import Path
+          from zipfile import ZipFile
+          r=Path(os.environ['ROOT'])
+          report=json.loads((r/'approved/radaradio-69-visual-approval-review.json').read_text())
+          assert (report['old_png_preserved'],report['source_candidate_png'],
+                  report['visually_rejected_png'],report['visually_approved_new_png'])==(40768,105,36,69)
+          assert (report['countries'],report['station_refs'],report['world_png'],
+                  report['still_missing'],report['changed_country_zips'])==(224,48219,40837,7382,30)
+          assert report['source_world_sha256']==os.environ['OLD_SHA']
+          assert report['unapproved_candidate_world_sha256']==os.environ['CANDIDATE_SHA']
+          assert report['production_published'] is False and report['review_only']
+          old=r/'old-world.zip';source=r/'candidate-world.zip'
+          final=r/'approved/new-world/radio-countries-bouquets.zip'
+          assert hashlib.sha256(final.read_bytes()).hexdigest()==report['world_sha256']
+          with ZipFile(old) as a,ZipFile(source) as b,ZipFile(final) as c:
+              ai=json.loads(a.read('index.json'));bi=json.loads(b.read('index.json'))
+              ci=json.loads(c.read('index.json'))
+              assert set(a.namelist())==set(b.namelist())==set(c.namelist())
+              assert sum(x['logos_found'] for x in ci['countries'].values())==40837
+              assert len(ci['countries'])==224
+              changed={row['country'] for row in report['per_country']}
+              assert len(changed)==30
+              for member in a.namelist():
+                  if member!='index.json' and member not in {'manifests/'+x+'.json' for x in changed}:
+                      assert a.read(member)==b.read(member)==c.read(member),member
+              for cc,meta in ci['countries'].items():
+                  assert meta['stations']==ai['countries'][cc]['stations']
+                  assert meta['bouquet_sha256']==ai['countries'][cc]['bouquet_sha256']
+                  assert meta['catalog_sha256']==ai['countries'][cc]['catalog_sha256']
+                  assert ai['countries'][cc]['logos_found']<=meta['logos_found']<=bi['countries'][cc]['logos_found']
+          print('FINAL VISUALLY APPROVED 224 COUNTRY WORLD PASS',json.dumps(
+              {k:v for k,v in report.items() if k!='per_country'},sort_keys=True),flush=True)
+          PY
+      - name: Archive ONE complete approved REVIEW world, 30 country zip and decision proof, never main or Release
+        uses: actions/upload-artifact@v4
+        with:
+          name: radaradio-69-approved-all-224-country-originals-40837-REVIEW-ONLY
+          path: |
+            /tmp/radaradio-69-approved-complete-world/approved/
+            review/radaradio-105-visual-decisions-20261121.json
+          retention-days: 30
+          if-no-files-found: error
