@@ -44,7 +44,7 @@ def verify_decisions(source,decisions):
         uuid=row.get("stationuuid");reason=row.get("reason")
         if (not isinstance(uuid,str) or not UUID_RE.fullmatch(uuid) or uuid not in by_uuid
             or uuid in rejects or not isinstance(reason,str) or
-            not re.fullmatch(r"[a-z_]{5,80}",reason)):
+            not re.fullmatch(r"[A-Za-z0-9_]{5,100}",reason)):
             raise ValueError("Unpinned or ambiguous visual rejection")
         rejects[uuid]=reason
     if len(rejects)!=36 or len(rejects)+decisions["visual_approved_count"]!=105:
