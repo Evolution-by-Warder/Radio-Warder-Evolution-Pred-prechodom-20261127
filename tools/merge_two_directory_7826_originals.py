@@ -115,7 +115,7 @@ def approved_images(stage,approval_file):
         if not png.startswith(PNG_MAGIC) or sha256(png).hexdigest()!=approved_sha:
             raise ValueError("Actual source picture changed after visual approval "+uid)
         pictures[source["country"]].append((source,png))
-    if sum(map(len,pictures.values()))!=len(approved):
+    if sum(map(len,pictures.values()))!=len(accepted):
         raise ValueError("Some original station images dropped")
     return report,approval,pictures
 
