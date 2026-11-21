@@ -1,4 +1,4 @@
-name: ONE all 224 countries 7451 gap RadaRadio original logo REVIEW world
+name: ONE 7451-targeted name and broadcaster homepage global radio REVIEW
 
 on:
   push:
@@ -6,6 +6,8 @@ on:
     paths:
       - .github/workflows/radio-radaradio-7451-one-global-world-review.yml
       - tools/recover_radaradio_7451_world.py
+      - tools/recover_radaradio_targeted_7451_namequery_world.py
+      - tests/test_recover_radaradio_targeted_7451_namequery_world.py
       - tests/test_recover_radaradio_7451_world.py
   workflow_dispatch:
 
@@ -28,8 +30,9 @@ jobs:
           set -euo pipefail
           python3 -m pip install --quiet 'Pillow>=10,<13' 'pycountry>=24,<30' 'defusedxml>=0.7,<1'
           PYTHONPATH=src:tools python3 -B tests/test_recover_radaradio_7451_world.py
+          PYTHONPATH=src:tools python3 -B tests/test_recover_radaradio_targeted_7451_namequery_world.py
           PYTHONPATH=src:tools python3 -B tests/test_missing_radio_logo_recovery.py
-          python3 -m py_compile tools/recover_radaradio_7451_world.py
+          python3 -m py_compile tools/recover_radaradio_7451_world.py tools/recover_radaradio_targeted_7451_namequery_world.py
       - name: Get only latest signed 40768 world; do not fetch existing station originals online
         run: |
           set -euo pipefail
@@ -99,10 +102,10 @@ jobs:
           print("ALL 224 PREVIOUS ORIGINAL COUNTRY LOGO ZIPS SHA VERIFIED",dict(chosen),flush=True)
           PY
           rm -rf "$ROOT/current" "$ROOT/prior40393" "$ROOT/prior40086" "$ROOT/prior40013" "$ROOT/prior39979" "$ROOT/prior39964" "$ROOT/prior39879" "$ROOT/patch7" "$ROOT/patch13" "$ROOT/canonical"
-      - name: ONE independent catalog sweep over all 224 countries and all 7451 missing references
+      - name: ONE all-7451 global station-name source search with exact broadcaster website evidence
         run: |
           set -euo pipefail
-          PYTHONPATH=src:tools python3 -B tools/recover_radaradio_7451_world.py \
+          PYTHONPATH=src:tools python3 -B tools/recover_radaradio_targeted_7451_namequery_world.py \
             --world "$ROOT/world.zip" --old-root "$ROOT/old" --out "$ROOT/recovery"
       - name: Independently verify candidate exact identity counts and build ONE global world if images recovered
         run: |
@@ -112,14 +115,14 @@ jobs:
           from pathlib import Path
           root=Path(os.environ['ROOT'])
           report=json.loads((root/'recovery/radaradio-7451-global-REVIEW.json').read_text())
-          assert report['schema']==1 and report['review_only']
+          assert report['schema']==2 and report['review_only']
           assert report['previous_world_sha256']==os.environ['WORLD_SHA']
           assert (report['countries_scanned'],report['stations'],report['originals_before'],report['missing_before'])==(224,48219,40768,7451)
           assert report['new_candidate_png']==sum(report['per_country_additions'].values())
           assert len(report['candidate_images'])==report['new_candidate_png']
-          assert all(x['identity']=='exact_country_name_stream' for x in report['candidate_images'])
+          assert all(x['identity']=='exact_country_name_official_homepage' and x['visual_review_required'] for x in report['candidate_images'])
           (root/'codes.txt').write_text(','.join(sorted(report['per_country_additions'])))
-          print('ONE COMPLETE RadaRadio COUNTRY PASS',report['new_candidate_png'],'STRICT SOURCE CANDIDATES',flush=True)
+          print('ONE COMPLETE 7451-GAP RadaRadio QUERY PASS',report['new_candidate_png'],'STRICT SOURCE CANDIDATES',flush=True)
           PY
           if test -s "$ROOT/codes.txt"; then
             PYTHONPATH=src:tools python3 -B tools/assemble_recovered_radio_world.py \
