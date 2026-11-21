@@ -1,0 +1,157 @@
+{
+  "schema": 1,
+  "review_only": true,
+  "visual_source": "radaradio-105-originals-independent-audit-and-visual-contact-sheets",
+  "source_run": 44939735947,
+  "audit_run": 44940434908,
+  "source_candidate_world_sha256": "ed8928350a6b5270ef1871b0196630082572f9105977667fdb4cc5b19ed28d0a",
+  "source_reviewed_images": 105,
+  "visual_rejected": [
+    {
+      "stationuuid": "8f3e8cb4-fdc7-4aeb-a17c-2a3a174d09f7",
+      "reason": "umbrella_brand_not_Andre_Rieu_variant"
+    },
+    {
+      "stationuuid": "aab7c249-4455-44de-970b-76ee81915357",
+      "reason": "umbrella_brand_not_Christmas_Pop_variant"
+    },
+    {
+      "stationuuid": "6dae7585-bf43-4c4f-a3dd-6a6b44354c64",
+      "reason": "generic_dance_music_art_not_station_logo"
+    },
+    {
+      "stationuuid": "95277bca-2c9a-4c08-b2e7-0854e5793f8e",
+      "reason": "stock_leaf_photograph"
+    },
+    {
+      "stationuuid": "b1939f76-1417-4058-8657-403e6fcf45ea",
+      "reason": "photo_promo_card_not_distinct_station_logo"
+    },
+    {
+      "stationuuid": "d50796ae-a0e4-493f-b276-6b0a15b0c6dc",
+      "reason": "artist_stock_portrait_not_station_logo"
+    },
+    {
+      "stationuuid": "d81cba95-90cb-493c-b921-133ab74daa0f",
+      "reason": "generic_national_flag_not_station_logo"
+    },
+    {
+      "stationuuid": "62a5bcf1-ebc5-4cb6-afeb-d40ac4195ab3",
+      "reason": "singer_portrait_not_station_logo"
+    },
+    {
+      "stationuuid": "6124c9b3-024c-4650-9c68-a5de9a7d89eb",
+      "reason": "singer_portrait_not_station_logo"
+    },
+    {
+      "stationuuid": "d3e8d3a0-d54e-4ae4-b8dc-45d57ad99074",
+      "reason": "generic_headphone_photo_other_club24_brand"
+    },
+    {
+      "stationuuid": "9629adcd-0601-11e8-ae97-52543be04c81",
+      "reason": "unlabelled_graphic_station_brand_unconfirmed"
+    },
+    {
+      "stationuuid": "67d2e0b4-6cde-4792-9c99-46e5185de985",
+      "reason": "artist_photo_genre_cover"
+    },
+    {
+      "stationuuid": "4b45de8a-3e0b-4c45-9471-dce34b8dd35c",
+      "reason": "artist_photo_genre_cover"
+    },
+    {
+      "stationuuid": "64ad4a90-b2ef-11e8-afe1-52543be04c81",
+      "reason": "artist_photo_genre_cover"
+    },
+    {
+      "stationuuid": "9a544b89-b2ef-11e8-afe1-52543be04c81",
+      "reason": "artist_photo_genre_cover"
+    },
+    {
+      "stationuuid": "03ccced6-b2f8-11e8-afe1-52543be04c81",
+      "reason": "artist_photo_genre_cover"
+    },
+    {
+      "stationuuid": "31f02e35-b2f3-11e8-afe1-52543be04c81",
+      "reason": "artist_photo_genre_cover"
+    },
+    {
+      "stationuuid": "e4a3cd42-10a9-41fd-b128-94686ee1997f",
+      "reason": "artist_photo_genre_cover"
+    },
+    {
+      "stationuuid": "48869d15-937f-4d74-85ff-5be960e869e6",
+      "reason": "genre_cover_photo_not_station_logo"
+    },
+    {
+      "stationuuid": "962c20a9-0601-11e8-ae97-52543be04c81",
+      "reason": "artist_photo_genre_cover"
+    },
+    {
+      "stationuuid": "64b958b6-404f-11e9-aa55-52543be04c81",
+      "reason": "artist_photo_genre_cover"
+    },
+    {
+      "stationuuid": "21e914f0-b2fb-11e8-afe1-52543be04c81",
+      "reason": "instrument_photo_genre_cover"
+    },
+    {
+      "stationuuid": "7b0baa6d-b2d7-11e8-afe1-52543be04c81",
+      "reason": "band_photo_genre_cover"
+    },
+    {
+      "stationuuid": "0e7fb616-0c55-4f4e-bb3f-242ab61293a0",
+      "reason": "generic_genre_cover_photo"
+    },
+    {
+      "stationuuid": "5ac3bb80-b896-420e-bde1-05e20cc75fa8",
+      "reason": "artist_photo_genre_cover"
+    },
+    {
+      "stationuuid": "4dd3fc15-bc84-48e5-92bd-ba1dc495f918",
+      "reason": "artist_photo_genre_cover"
+    },
+    {
+      "stationuuid": "961e3de7-0601-11e8-ae97-52543be04c81",
+      "reason": "rapper_photo_genre_cover"
+    },
+    {
+      "stationuuid": "c921edcb-1759-11ea-a620-52543be04c81",
+      "reason": "artist_photo_genre_cover"
+    },
+    {
+      "stationuuid": "9643fe29-0601-11e8-ae97-52543be04c81",
+      "reason": "conductor_photo_genre_cover"
+    },
+    {
+      "stationuuid": "d7a0fe69-5475-495e-9923-64bb7dc2cbe3",
+      "reason": "artist_photo_genre_cover"
+    },
+    {
+      "stationuuid": "d716df3e-37ee-4601-97e3-f041dfb28539",
+      "reason": "artist_photo_genre_cover"
+    },
+    {
+      "stationuuid": "0f56480f-92bc-4626-ae0d-7e0fea9078e1",
+      "reason": "singer_photo_genre_cover"
+    },
+    {
+      "stationuuid": "a21b8ca9-7410-4d7e-abad-cb8cf4c4e5bb",
+      "reason": "blues_album_cover_not_station_logo"
+    },
+    {
+      "stationuuid": "c29dbc3b-d9c5-4bf4-96e3-aeefaa6df8f6",
+      "reason": "woman_portrait_not_station_logo"
+    },
+    {
+      "stationuuid": "1c267364-c42d-4a96-836f-1323820dfcd7",
+      "reason": "generic_pumpkin_clipart_not_station_logo"
+    },
+    {
+      "stationuuid": "36b2caa4-41e0-11e9-aa55-52543be04c81",
+      "reason": "small_tropical_album_cover_not_clear_station_logo"
+    }
+  ],
+  "visual_approved_count": 69,
+  "production_published": false
+}
