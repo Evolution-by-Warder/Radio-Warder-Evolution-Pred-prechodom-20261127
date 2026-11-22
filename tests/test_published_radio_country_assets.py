@@ -65,7 +65,7 @@ class Tests(unittest.TestCase):
     def test_modified_world_sha_rejected(self):
         index, release = fixture()
         index["world"]["sha256"] = "0" * 64
-        with self.assertRaisesRegex(ValueError, "world"):
+        with self.assertRaisesRegex(ValueError, "radio-countries-bouquets.zip"):
             audit.verify(index, release, expected_countries=2)
 
     def test_extra_asset_rejected(self):
