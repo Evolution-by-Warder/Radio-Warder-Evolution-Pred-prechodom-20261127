@@ -1,0 +1,232 @@
+name: Publish safe immutable radio country deltas every fortnight
+on:
+  push:
+    branches: [automation/radio-country-fortnightly-production-20261122]
+    paths:
+      - .github/workflows/publish-radio-country-fortnightly.yml
+      - .github/scripts/verify_country_delta_release.py
+      - .github/scripts/test_verify_country_delta_release.py
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/publish-radio-country-fortnightly.yml
+      - .github/scripts/verify_country_delta_release.py
+      - .github/scripts/test_verify_country_delta_release.py
+  workflow_run:
+    workflows:
+      - Warder Radio automatic fortnightly original-logo review after complete world scan
+    branches: [main]
+    types: [completed]
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: warder-radio-country-fortnightly-immutable-release
+  cancel-in-progress: false
+jobs:
+  self-test:
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test immutable release safety before enabling unattended publication
+        run: |
+          python3 -m py_compile .github/scripts/verify_country_delta_release.py
+          python3 -B .github/scripts/test_verify_country_delta_release.py
+
+  verify-and-publish:
+    if: >-
+      github.event_name == 'workflow_run' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_branch == 'main' &&
+      github.event.workflow_run.event == 'workflow_run'
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: radio-world-fortnightly-with-original-logo-checks-REVIEW-ONLY
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+          path: build/fortnightly
+      - name: Independently verify 224 countries, source ZIP, changed original ZIPs and exact previous release
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -B .github/scripts/test_verify_country_delta_release.py
+          cp assets/radio-country/latest.json build/fortnightly/previous.json
+          python3 -B .github/scripts/verify_country_delta_release.py \
+            --previous build/fortnightly/previous.json \
+            --current build/fortnightly/latest.json \
+            --plan build/fortnightly/release-plan.json \
+            --changes build/fortnightly/changes.json \
+            --world build/fortnightly/radio-countries-bouquets.zip \
+            --assets build/fortnightly/release-assets \
+            --out build/fortnightly/publisher-proof.json
+          python3 - <<'PY'
+          from datetime import datetime, timezone
+          from pathlib import Path
+          import json,os
+          r=json.loads(Path('build/fortnightly/publisher-proof.json').read_text())
+          v=datetime.strptime(r['tag'].removeprefix('radio-country-'),'%Y%m%d').date()
+          today=datetime.now(timezone.utc).date()
+          assert 0 <= (today-v).days <= 1, 'Unexpected future/old dated release'
+          with open(os.environ['GITHUB_ENV'],'a') as out:
+              out.write('COUNTRY_TAG='+r['tag']+'\n')
+              out.write('NO_CHANGES='+('true' if r['no_change'] else 'false')+'\n')
+          print('AUTO RELEASE GATE PASS',r)
+          PY
+      - name: Confirm every SHA-reused old original ZIP remains on its immutable public tag
+        if: env.NO_CHANGES != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          index=json.loads(Path('build/fortnightly/latest.json').read_text())
+          previous=index['release_tag']
+          m={}
+          for code,entry in index['countries'].items():
+              logo=entry['logos']
+              label=logo.get('asset_tag',previous)
+              if label!=previous:
+                  m.setdefault(label,{})[logo['file']]={'sha':logo['sha256'],'size':logo['bytes']}
+          Path('build/fortnightly/reused-tags.json').write_text(json.dumps(m,sort_keys=True))
+          PY
+          for tag in $(python3 -c "import json;print(' '.join(json.load(open('build/fortnightly/reused-tags.json'))))"); do
+            gh api "repos/$GITHUB_REPOSITORY/releases/tags/$tag" > build/fortnightly/previous-release.json
+            TAG="$tag" python3 - <<'PY'
+          import json,os
+          have=json.load(open('build/fortnightly/previous-release.json'))
+          old=json.load(open('build/fortnightly/reused-tags.json'))[os.environ['TAG']]
+          assets={a['name']:a for a in have['assets']}
+          assert not have['draft'] and not have['prerelease']
+          for name,entry in old.items():
+              assert name in assets and assets[name]['size']==entry['size']
+              assert assets[name]['digest']=='sha256:'+entry['sha'],name
+          print('Verified previously released original-logo assets',os.environ['TAG'],len(old))
+          PY
+          done
+      - name: Create or resume only the same immutable draft, upload just changed ZIPs
+        if: env.NO_CHANGES != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="$COUNTRY_TAG"
+          [[ "$tag" =~ ^radio-country-20[0-9]{6}$ ]]
+          LATEST_PLUGIN="$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq .tag_name)"
+          case "$LATEST_PLUGIN" in warder-radio-v*) ;; *) exit 1 ;; esac
+          echo "LATEST_PLUGIN=$LATEST_PLUGIN" >> "$GITHUB_ENV"
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          index=json.load(open('build/fortnightly/latest.json'))
+          plan=json.load(open('build/fortnightly/release-plan.json'))
+          notes=('Warder Radio 224-country automatic original station-logo update. '
+                 'World ZIP includes all current bouquets, and the release contains '
+                 'only the country ZIPs whose exact SHA-256 changed. All other country '
+                 'ZIPs remain on their prior immutable release asset tags. '
+                 'Receivers fetch only their active country logos to external storage. '
+                 'Country count: '+str(index['country_count'])+
+                 '; stations: '+str(index['station_count'])+
+                 '; newly updated logo countries: '+str(len(plan['country_logo_zip_uploads']))+'.')
+          Path('build/fortnightly/release-notes.md').write_text(notes+'\n')
+          expected={'radio-countries-bouquets.zip':{
+                      'sha':index['world']['sha256'],'size':index['world']['bytes']}}
+          for code in plan['country_logo_zip_uploads']:
+              m=index['countries'][code]['logos']
+              expected[code+'.zip']={'sha':m['sha256'],'size':m['bytes']}
+          Path('build/fortnightly/required-assets.json').write_text(json.dumps(expected,sort_keys=True))
+          PY
+          if ! gh release view "$tag" >/dev/null 2>&1; then
+            gh release create "$tag" --draft --latest=false --target "$GITHUB_SHA" \
+              --title "Warder Radio – 224-country automatic original-logo update $tag" \
+              --notes-file build/fortnightly/release-notes.md
+          fi
+          gh api "repos/$GITHUB_REPOSITORY/releases/tags/$tag" > build/fortnightly/existing-release.json
+          python3 - <<'PY'
+          from pathlib import Path
+          import json,os
+          old=json.load(open('build/fortnightly/existing-release.json'))
+          wanted=json.load(open('build/fortnightly/required-assets.json'))
+          have={a['name']:a for a in old['assets']}
+          assert old['tag_name']==os.environ['COUNTRY_TAG'] and old['draft'], 'Never overwrite a published immutable release'
+          assert set(have)<=set(wanted)
+          for name,meta in have.items():
+              assert meta['size']==wanted[name]['size'] and meta['digest']=='sha256:'+wanted[name]['sha']
+          missing=sorted(set(wanted)-set(have))
+          Path('build/fortnightly/missing-assets.txt').write_text('\n'.join(missing)+'\n')
+          print('Missing new immutable assets:',len(missing))
+          PY
+          while IFS= read -r name; do
+            test -n "$name" || continue
+            if test "$name" = radio-countries-bouquets.zip; then
+              source=build/fortnightly/radio-countries-bouquets.zip
+            else
+              source="build/fortnightly/release-assets/$name"
+            fi
+            gh release upload "$tag" "$source"
+          done < build/fortnightly/missing-assets.txt
+          gh api "repos/$GITHUB_REPOSITORY/releases/tags/$tag" > build/fortnightly/uploaded-release.json
+          python3 - <<'PY'
+          import json,os
+          actual=json.load(open('build/fortnightly/uploaded-release.json'))
+          expected=json.load(open('build/fortnightly/required-assets.json'))
+          have={a['name']:a for a in actual['assets']}
+          assert actual['draft'] and actual['tag_name']==os.environ['COUNTRY_TAG']
+          assert set(have)==set(expected)
+          for name,meta in expected.items():
+              a=have[name]
+              assert a['size']==meta['size'] and a['digest']=='sha256:'+meta['sha'],name
+          print('Verified uploaded changed SHA assets',len(expected))
+          PY
+      - name: Publish verified immutable release before changing receiver latest.json
+        if: env.NO_CHANGES != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          id="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$COUNTRY_TAG" --jq .id)"
+          echo '{"draft":false,"prerelease":false,"make_latest":"false"}' > build/fortnightly/promote-release.json
+          gh api -X PATCH "repos/$GITHUB_REPOSITORY/releases/$id" \
+            --input build/fortnightly/promote-release.json > build/fortnightly/release-final.json
+          python3 - <<'PY'
+          import json,os
+          x=json.load(open('build/fortnightly/release-final.json'))
+          assert x['tag_name']==os.environ['COUNTRY_TAG'] and not x['draft'] and not x['prerelease']
+          PY
+          test "$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq .tag_name)" = "$LATEST_PLUGIN"
+      - name: Atomically publish new official index only if original baseline was unchanged
+        if: env.NO_CHANGES != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git pull --ff-only origin main
+          cmp assets/radio-country/latest.json build/fortnightly/previous.json
+          cp build/fortnightly/latest.json assets/radio-country/latest.json
+          git add assets/radio-country/latest.json
+          git diff --cached --check
+          if ! git diff --cached --quiet; then
+            git commit -m "Publish verified fortnightly world radio delta $COUNTRY_TAG [skip ci]"
+            git push origin HEAD:main
+          fi
+          gh api "repos/$GITHUB_REPOSITORY/contents/assets/radio-country/latest.json?ref=main" --jq .sha
+          test "$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq .tag_name)" = "$LATEST_PLUGIN"
+          echo "AUTO COUNTRY RELEASE PUBLISHED; PREVIOUS ORIGINAL ZIP TAGS SAFELY REUSED"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: radio-fortnightly-release-gate-and-sha-proof
+          path: |
+            build/fortnightly/publisher-proof.json
+            build/fortnightly/required-assets.json
+            build/fortnightly/release-final.json
+          if-no-files-found: ignore
+          retention-days: 30
