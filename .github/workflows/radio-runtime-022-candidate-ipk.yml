@@ -29,7 +29,7 @@ jobs:
         with:
           python-version: '3.11'
       - name: Install native test parsers
-        run: python3 -m pip install --quiet 'Pillow>=10,<13' 'defusedxml>=0.7,<1' 'pycountry>=24,<30'
+        run: python3 -m pip install --quiet 'Pillow>=10,<13' 'defusedxml>=0.7,<1' 'CairoSVG>=2.7,<3' 'pycountry>=24,<30'
       - name: Check approved online source modules and stable version
         shell: bash
         run: |
