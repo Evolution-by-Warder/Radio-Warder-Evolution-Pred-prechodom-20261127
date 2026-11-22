@@ -6,6 +6,13 @@ on:
       - main
     paths:
       - .github/workflows/promote-radio-country-224.yml
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/promote-radio-country-224.yml
+      - .github/scripts/promote_country_224.py
+      - .github/scripts/test_promote_country_224.py
+      - assets/radio-country/source-20261122.json
   workflow_dispatch:
 permissions:
   contents: write
