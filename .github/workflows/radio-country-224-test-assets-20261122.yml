@@ -1,0 +1,163 @@
+name: Publish immutable TEST-ONLY 224-country Radio World and original country ZIP assets
+on:
+  push:
+    branches: [feature/radio-browser-country-bouquets-and-logo-zips-20261119]
+    paths: [.github/workflows/radio-country-224-test-assets-20261122.yml]
+permissions:
+  contents: write
+  actions: read
+jobs:
+  world-and-224-logo-assets-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    env:
+      GH_TOKEN: __GH_TOKEN__
+      ROOT: /tmp/warder-country-224-test-only-20261122
+      TAG: radio-country-20261122
+      WORLD_SHA: a3237e7d3ee5218eee4b30b6bff15c73e384657d17d8b8fb28fa21a690e4863b
+      FINAL_SHA: 771953b41ceab46f8852f5e3219338cb1369d7f653ed7d329ad551e481f88d68
+    steps:
+      - uses: actions/checkout@v4
+      - name: Pin 40768 old originals and latest visual-approved 40837 world source
+        run: |
+          set -euo pipefail
+          mkdir -p "$ROOT"/{current,prior40393,prior40086,prior40013,prior39979,prior39964,prior39879,patch7,patch13,canonical,old,final,assets}
+          for id in 44801652426 44924578609 44919526717 44915726977 44914701701 44913642417 44911563049 44907110543 44907497364 44906253671 44941542756 44941776128; do
+            test "$(gh run view "$id" --json conclusion -q .conclusion)" = success
+          done
+          gh run download 44924578609 -n radio-independent-two-67k-directories-one-global-visually-approved-REVIEW-ONLY -D "$ROOT/current"
+          cp "$(find "$ROOT/current" -type f -name radio-countries-bouquets.zip | head -1)" "$ROOT/world.zip"
+          echo "$WORLD_SHA  $ROOT/world.zip" | sha256sum --check
+          gh run download 44941542756 -n radaradio-69-approved-all-224-country-originals-40837-REVIEW-ONLY -D "$ROOT/final"
+          cp "$ROOT/final/new-world/radio-countries-bouquets.zip" "$ROOT/assets/radio-countries-bouquets.zip"
+          echo "$FINAL_SHA  $ROOT/assets/radio-countries-bouquets.zip" | sha256sum --check
+      - name: Restore all 224 exact old country ZIPs without refetching any broadcaster artwork
+        run: |
+          set -euo pipefail
+          gh run download 44801652426 -p 'radio-canonical-39643-country-shard-*-REVIEW' -D "$ROOT/canonical"
+          gh run download 44919526717 -n radio-all-8133-gaps-one-global-visually-approved-world-REVIEW-ONLY -D "$ROOT/prior40393"
+          gh run download 44915726977 -n radio-tunein-second-73-visual-40086-world-REVIEW-ONLY -D "$ROOT/prior40086"
+          gh run download 44914701701 -n radio-tunein-34-visual-originals-40013-world-REVIEW-ONLY -D "$ROOT/prior40013"
+          gh run download 44913642417 -n radio-tef-15-visual-approved-39979-world-REVIEW-ONLY -D "$ROOT/prior39979"
+          gh run download 44911563049 -n radio-global-85-highres-originals-39964-world-REVIEW-ONLY -D "$ROOT/prior39964"
+          gh run download 44907110543 -n radio-six-visual-owner-originals-39879-world-REVIEW-ONLY -D "$ROOT/prior39879"
+          gh run download 44907497364 -n radio-final-seven-current-country-SHA-originals-REVIEW-ONLY -D "$ROOT/patch7"
+          gh run download 44906253671 -n radio-reconciled-20-stale-country-original-sha-REVIEW-ONLY -D "$ROOT/patch13"
+          python3 - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile
+          from collections import Counter
+          import hashlib,json,os,shutil
+          root=Path(os.environ["ROOT"])
+          with ZipFile(root/"world.zip") as archive:
+              idx=json.loads(archive.read("index.json"))
+          order=("current","prior40393","prior40086","prior40013","prior39979","prior39964",
+                 "prior39879","patch7","patch13","canonical")
+          available={}
+          for source in order:
+              inventory={}
+              for folder in (root/source).rglob("radio-country-??-REVIEW-NOT-PRODUCTION"):
+                  cc=folder.name.split("-")[2]
+                  f=folder/"logos"/(cc+".zip")
+                  if f.is_file() and not f.is_symlink():inventory.setdefault(cc,[]).append((folder,f))
+              available[source]=inventory
+          chosen=Counter()
+          for cc,meta in sorted(idx["countries"].items()):
+              selected=[]
+              for source in order:
+                  for folder,f in available[source].get(cc,[]):
+                      if hashlib.sha256(f.read_bytes()).hexdigest()==meta["logo_sha256"]:
+                          selected.append((source,folder,f))
+                  if selected:break
+              if len(selected)!=1:raise ValueError("No single current approved original country ZIP "+cc+":"+str(len(selected)))
+              source,folder,f=selected[0]
+              with ZipFile(f) as z:
+                  if len(z.namelist())!=meta["logos_found"] or len(z.namelist())!=len(set(z.namelist())):
+                      raise ValueError("Corrupt prior country original PNG ZIP "+cc)
+              shutil.copytree(folder,root/"old"/folder.name)
+              chosen[source]+=1
+          assert sum(chosen.values())==224
+          print("ALL 224 PREVIOUS ORIGINAL COUNTRY LOGO ZIPS SHA VERIFIED",dict(chosen),flush=True)
+          PY
+          rm -rf "$ROOT/current" "$ROOT/prior40393" "$ROOT/prior40086" "$ROOT/prior40013" "$ROOT/prior39979" "$ROOT/prior39964" "$ROOT/prior39879" "$ROOT/patch7" "$ROOT/patch13" "$ROOT/canonical"
+      - name: Stage and SHA-verify exact 224 logo archives; create TEST-ONLY feed
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,hashlib,os,shutil
+          from pathlib import Path
+          from zipfile import ZipFile
+          root=Path(os.environ['ROOT'])
+          with ZipFile(root/'assets/radio-countries-bouquets.zip') as z:
+              idx=json.loads(z.read('index.json'))
+          assert idx['country_count']==224 and idx['station_count']==48219
+          assert sum(v['logos_found'] for v in idx['countries'].values())==40837
+          assets={}
+          for cc,meta in sorted(idx['countries'].items()):
+              f=root/'final/approved-countries'/('radio-country-'+cc+'-REVIEW-NOT-PRODUCTION')/'logos'/(cc+'.zip')
+              if not f.is_file():
+                  f=root/'old'/('radio-country-'+cc+'-REVIEW-NOT-PRODUCTION')/'logos'/(cc+'.zip')
+              if not f.is_file() or f.is_symlink():raise ValueError('Missing original country asset '+cc)
+              digest=hashlib.sha256(f.read_bytes()).hexdigest()
+              assert digest==meta['logo_sha256'],(cc,digest,meta['logo_sha256'])
+              with ZipFile(f) as z:
+                  assert len(z.namelist())==meta['logos_found']
+              dest=root/'assets'/(cc+'.zip')
+              shutil.copyfile(f,dest)
+              assets[cc]={'name':meta.get('name',cc),
+                         'stations':meta['stations'],
+                         'logo_package_complete':True,
+                         'logos':{'file':cc+'.zip','bytes':dest.stat().st_size,'sha256':digest}}
+          blob=root/'assets/radio-countries-bouquets.zip'
+          feed={'schema':1,'source':'WarderRadio.RadioBrowser',
+                'complete':True,'review_only':True,'test_only':True,
+                'release_tag':os.environ['TAG'],'country_count':224,
+                'station_count':48219,
+                'world':{'file':blob.name,'bytes':blob.stat().st_size,'sha256':os.environ['FINAL_SHA']},
+                'countries':assets}
+          out=root/'test-feed.json'
+          out.write_text(json.dumps(feed,sort_keys=True,ensure_ascii=False,indent=2)+'\n')
+          print('TEST COUNTRY DISTRIBUTION 224 / 48219 / 40837 SHA-PINNED',sum(a['logos']['bytes'] for a in assets.values()),flush=True)
+          PY
+      - name: Create immutable TEST-only prerelease and upload 224 exact-source country logos
+        run: |
+          set -euo pipefail
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "::error::Test tag exists; never overwrite original country assets."
+            exit 1
+          fi
+          gh release create "$TAG" --prerelease --latest=false --target "$GITHUB_SHA" \
+            --title "Warder Radio 224 country assets – test only, not production" \
+            --notes "Personal receiver QA. 224 signed Radio Browser country bouquets and 224 original station-logo ZIP sets. Not approved for stable production feeds; marks remain the property of their owners. One selected country is installed at a time to avoid filling image flash."
+          for code in $(python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          d=json.loads((Path(os.environ['ROOT'])/'test-feed.json').read_text())
+          print(' '.join(sorted(d['countries'])))
+          PY
+          ); do
+            gh release upload "$TAG" "$ROOT/assets/$code.zip"
+          done
+          gh release upload "$TAG" "$ROOT/assets/radio-countries-bouquets.zip"
+          gh release view "$TAG" --json assets -q '.assets | length' | grep -Fx '225'
+          echo 'TEST 225 SIGNED COUNTRY/LOGO RELEASE ASSETS PUBLISHED'
+      - name: Save isolated TEST feed on feature branch only; never modify main or stable updater
+        run: |
+          set -euo pipefail
+          mkdir -p assets/radio-country
+          cp "$ROOT/test-feed.json" assets/radio-country/test-20261122.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          test "$(git branch --show-current)" = feature/radio-browser-country-bouquets-and-logo-zips-20261119
+          git add assets/radio-country/test-20261122.json
+          git commit -m "Publish TEST ONLY 224-country signed feed from immutable verified review assets"
+          git push origin HEAD:feature/radio-browser-country-bouquets-and-logo-zips-20261119
+          gh api "repos/$GITHUB_REPOSITORY/contents/assets/radio-country/test-20261122.json?ref=feature/radio-browser-country-bouquets-and-logo-zips-20261119" -q .sha
+      - name: Upload small TEST QA feed proof with country checksums
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Warder-Radio-TEST-20261122-224-country-published-feed-QA
+          path: |
+            /tmp/warder-country-224-test-only-20261122/test-feed.json
+          retention-days: 30
