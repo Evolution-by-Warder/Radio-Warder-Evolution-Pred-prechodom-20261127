@@ -44,6 +44,8 @@ jobs:
         run: |
           set -euo pipefail
           python3 tools/build_ipk.py
+          python3 tools/build_ipk.py --legacy-bridge
+          python3 tools/build_ipk.py --tester-bridge
           python3 tools/verify_ipk.py
           python3 - <<'PY'
           import hashlib,json,subprocess,tarfile,io
