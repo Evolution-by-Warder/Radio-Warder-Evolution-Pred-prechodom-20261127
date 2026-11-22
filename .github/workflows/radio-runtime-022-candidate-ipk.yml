@@ -1,0 +1,115 @@
+name: Warder Radio 0.2.2 stable-source candidate IPK - no publication
+on:
+  push:
+    branches: [release/radio-online-logo-fixes-0.2.2-20261122]
+    paths:
+      - .github/workflows/radio-runtime-022-candidate-ipk.yml
+      - src/**
+      - tests/**
+      - tools/verify_021_to_022_upgrade.py
+  pull_request:
+    paths:
+      - .github/workflows/radio-runtime-022-candidate-ipk.yml
+      - src/**
+      - tests/**
+      - tools/verify_021_to_022_upgrade.py
+permissions:
+  contents: read
+jobs:
+  complete-independent-runtime-preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      PYTHONPATH: src:tools
+      PYTHONDONTWRITEBYTECODE: '1'
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install native test parsers
+        run: python3 -m pip install --quiet 'Pillow>=10,<13' 'defusedxml>=0.7,<1' 'CairoSVG>=2.7,<3' 'pycountry>=24,<30'
+      - name: Check approved online source modules and stable version
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(cat src/WarderRadio/version.txt)" = '0.2.2'
+          for f in curated_station_logos.py homepage_logos.py logo_source_guard.py station_logos.py svg_logos.py radio_browser.py screensaver.py; do
+            test -s "src/WarderRadio/$f"
+          done
+          python3 -m compileall -q src tests tools/verify_021_to_022_upgrade.py
+      - name: Build the complete receiver IPK without bundling world country ZIPs
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/build_ipk.py
+          python3 tools/build_ipk.py --legacy-bridge
+          python3 tools/build_ipk.py --tester-bridge
+          python3 tools/verify_ipk.py
+          python3 - <<'PY'
+          import hashlib,json,subprocess,tarfile,io
+          from pathlib import Path
+          m=json.loads(Path('dist/build.json').read_text())
+          assert m['version']=='0.2.2-1',m
+          f=Path('dist')/m['file']
+          assert m['bytes']==f.stat().st_size<10*1024*1024
+          assert hashlib.sha256(f.read_bytes()).hexdigest()==m['sha256']
+          data=subprocess.check_output(['ar','p',str(f),'data.tar.gz'])
+          with tarfile.open(fileobj=io.BytesIO(data),mode='r:gz') as t:
+            names={n.name for n in t}
+            for file in ('curated_station_logos.py','homepage_logos.py','logo_source_guard.py','station_logos.py','svg_logos.py'):
+              assert './usr/lib/enigma2/python/Plugins/Extensions/WarderRadio/'+file in names
+            assert not any('radio-countries-bouquets.zip' in n or '/picon/radio/' in n for n in names)
+          print('0.2.2-1 independent runtime-only candidate',m['bytes'],m['sha256'])
+          PY
+      - name: Test the complete runtime, online originals, settings and safe image fallbacks
+        run: |
+          python3 -m unittest discover -s tests -v > dist/0.2.2-unit.log 2>&1 || {
+            tail -150 dist/0.2.2-unit.log
+            exit 1
+          }
+          tail -8 dist/0.2.2-unit.log
+      - name: Verify native OpenPLi 9.2, OpenATV 8.0 and 8.1
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/fetch_native.py
+          for ref in openpli-release-9.2 openatv-81-reviewed-base openatv-8.0-next; do
+            python3 tools/test_native.py --upstream "fixtures/$ref" -v > "dist/native-$ref.log" 2>&1 || {
+              tail -110 "dist/native-$ref.log"
+              exit 1
+            }
+          done
+      - name: Real offline opkg stable 0.2.1 to 0.2.2 upgrade and reinstall
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq autoconf automake libtool pkg-config libarchive-dev libssl-dev
+          mkdir -p dist/stable-021
+          gh release download warder-radio-v0.2.1 -p '*.ipk' -p SHA256SUMS -D dist/stable-021
+          (cd dist/stable-021 && sha256sum --check SHA256SUMS)
+          sh tools/build_host_opkg.sh /tmp/warder-022-candidate-opkg cc330e2a5e311fa99ead37f6e439599a2a0909a0
+          python3 tools/verify_021_to_022_upgrade.py \
+            --opkg /tmp/warder-022-candidate-opkg/src/opkg \
+            --stable dist/stable-021/enigma2-plugin-extensions-radio-warder-evolution_0.2.1_all.ipk \
+            --candidate dist/enigma2-plugin-extensions-radio-warder-evolution_0.2.2_all.ipk \
+            > dist/stable-to-022-upgrade.log 2>&1 || {
+              cat dist/stable-to-022-upgrade.log
+              exit 1
+            }
+          tail -16 dist/stable-to-022-upgrade.log
+      - name: Preserve downloadable isolated IPK and checksums, no stable feed changes
+        uses: actions/upload-artifact@v4
+        with:
+          name: Warder-Radio-0.2.2-RUNTIME-CANDIDATE-NOT-STABLE
+          path: |
+            dist/enigma2-plugin-extensions-radio-warder-evolution_0.2.2_all.ipk
+            dist/SHA256SUMS
+            dist/build.json
+            dist/0.2.2-unit.log
+            dist/native-*.log
+            dist/stable-to-022-upgrade.log
+          retention-days: 30
+          if-no-files-found: error
