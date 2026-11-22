@@ -119,7 +119,7 @@ jobs:
         run: |
           set -euo pipefail
           tag="$COUNTRY_TAG"
-          case "$tag" in radio-country-20????????) ;; *) exit 1 ;; esac
+          [[ "$tag" =~ ^radio-country-20[0-9]{6}$ ]]
           LATEST_PLUGIN="$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq .tag_name)"
           case "$LATEST_PLUGIN" in warder-radio-v*) ;; *) exit 1 ;; esac
           echo "LATEST_PLUGIN=$LATEST_PLUGIN" >> "$GITHUB_ENV"
