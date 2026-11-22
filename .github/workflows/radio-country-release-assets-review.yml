@@ -6,11 +6,17 @@ on:
     paths:
       - tools/audit_radio_country_release_assets.py
       - tests/test_radio_country_release_assets.py
+      - tools/verify_published_radio_country_assets.py
+      - tests/test_published_radio_country_assets.py
+      - assets/radio-country/test-20261122.json
       - .github/workflows/radio-country-release-assets-review.yml
   pull_request:
     paths:
       - tools/audit_radio_country_release_assets.py
       - tests/test_radio_country_release_assets.py
+      - tools/verify_published_radio_country_assets.py
+      - tests/test_published_radio_country_assets.py
+      - assets/radio-country/test-20261122.json
       - .github/workflows/radio-country-release-assets-review.yml
 
 permissions:
@@ -26,3 +32,15 @@ jobs:
         run: python3 -m py_compile tools/audit_radio_country_release_assets.py tests/test_radio_country_release_assets.py
       - name: Independently validate 200-country assets and non-overwriting review staging
         run: python3 -B tests/test_radio_country_release_assets.py
+      - name: Verify immutable TEST-only release integrity regression
+        run: |
+          python3 -B tests/test_published_radio_country_assets.py
+          python3 -B tools/verify_published_radio_country_assets.py --expected-countries 224
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: radio-country-225-public-asset-sha-audit-NOT-PRODUCTION
+          path: build/radio-country-remote-integrity.json
+          retention-days: 30
+          if-no-files-found: error
