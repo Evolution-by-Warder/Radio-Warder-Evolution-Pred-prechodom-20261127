@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 150
     env:
-      GH_TOKEN: __GH_TOKEN__
+      GH_TOKEN: ${{ github.token }}
       ROOT: /tmp/warder-country-224-test-only-20261122
       TAG: radio-country-20261122
       WORLD_SHA: a3237e7d3ee5218eee4b30b6bff15c73e384657d17d8b8fb28fa21a690e4863b
