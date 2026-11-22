@@ -245,6 +245,36 @@ jobs:
             plan+=(--previous /tmp/radio-prior.json)
           fi
           python3 -B tools/plan_radio_country_release_assets.py "${plan[@]}"
+      - name: Stage only SHA-changed original country ZIPs for automatic immutable publication
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib,json,shutil
+          root=Path('build/world-candidate')
+          plan=json.loads((root/'release-plan.json').read_text())
+          index=json.loads((root/'latest.json').read_text())
+          src=Path('build/full-world-shards')
+          codes=plan['country_logo_zip_uploads']
+          assert plan['complete'] and len(set(codes))==len(codes)
+          dest=root/'release-assets'
+          dest.mkdir(exist_ok=True)
+          total=0
+          for code in codes:
+              assert code in index['countries'] and len(code)==2 and code.isalpha() and code.isupper()
+              origin=src/('radio-country-'+code+'-REVIEW-NOT-PRODUCTION')/'logos'/(code+'.zip')
+              meta=index['countries'][code]['logos']
+              assert meta.get('asset_tag',index['release_tag'])==index['release_tag']
+              assert not origin.is_symlink() and origin.is_file()
+              digest=hashlib.sha256(origin.read_bytes()).hexdigest()
+              assert digest==meta['sha256'] and origin.stat().st_size==meta['bytes'],code
+              shutil.copy2(origin,dest/(code+'.zip'))
+              total+=meta['bytes']
+          assert total==plan['new_logo_zip_bytes']
+          assert sorted(p.name for p in dest.iterdir())==sorted(c+'.zip' for c in codes)
+          print('STAGED ONLY CHANGED COUNTRY ZIPS',len(codes),'original bytes',total)
+          PY
       - uses: actions/upload-artifact@v4
         with:
           name: radio-world-fortnightly-with-original-logo-checks-REVIEW-ONLY
