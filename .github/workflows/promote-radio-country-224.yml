@@ -1,0 +1,126 @@
+name: Promote 224 verified Warder Radio country assets into stable catalogue
+on:
+  push:
+    branches:
+      - release/radio-country-224-production-20261122
+      - main
+    paths:
+      - .github/workflows/promote-radio-country-224.yml
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/promote-radio-country-224.yml
+      - .github/scripts/promote_country_224.py
+      - .github/scripts/test_promote_country_224.py
+      - assets/radio-country/source-20261122.json
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: radio-country-first-stable-promotion
+  cancel-in-progress: false
+jobs:
+  verify-and-promote:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: radio-country-20261122
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run independent pinned catalogue negative/positive regression suite
+        run: |
+          set -euo pipefail
+          python3 -m py_compile .github/scripts/promote_country_224.py .github/scripts/test_promote_country_224.py
+          python3 -B .github/scripts/test_promote_country_224.py
+      - name: Fetch the exact immutable public release metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/radio-country
+          gh api "repos/$GITHUB_REPOSITORY/releases/tags/$TAG" > build/radio-country/release.json
+          python3 -B .github/scripts/promote_country_224.py \
+            --source assets/radio-country/source-20261122.json \
+            --release build/radio-country/release.json \
+            --output build/radio-country/latest.json \
+            --proof build/radio-country/verification.json
+          test "$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq .tag_name)" = warder-radio-v0.2.2
+          if test -e assets/radio-country/latest.json; then
+            cmp assets/radio-country/latest.json build/radio-country/latest.json
+          fi
+      - name: Promote the already uploaded immutable 225-asset release without re-uploading
+        if: github.ref == 'refs/heads/main'
+        shell: bash
+        run: |
+          set -euo pipefail
+          id="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$TAG" --jq .id)"
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          Path('build/radio-country/promotion.json').write_text(json.dumps({
+              'draft':False,
+              'prerelease':False,
+              'make_latest':'false',
+              'name':'Warder Radio – 224 country bouquets and original station logos',
+              'body':(
+                  'Official immutable world radio-country data release: 224 countries, '
+                  '48,219 Radio Browser stations, 40,837 verified original station PNGs. '
+                  '225 checksum-verified assets: one global bouquet/catalogue ZIP plus '
+                  'one independent original-logo ZIP per country. '
+                  'Receiver downloads only the selected country logos to its configured '
+                  'external storage; the full world artwork is not bundled in any plugin IPK. '
+                  'Country index: assets/radio-country/latest.json on main. '
+                  'All source asset files and SHA256 hashes are preserved unchanged.'
+              )
+          },sort_keys=True))
+          PY
+          gh api -X PATCH "repos/$GITHUB_REPOSITORY/releases/$id" \
+            --input build/radio-country/promotion.json > build/radio-country/release-promoted.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          x=json.loads(Path('build/radio-country/release-promoted.json').read_text())
+          assert x['tag_name']=='radio-country-20261122' and not x['draft'] and not x['prerelease']
+          assert len(x['assets'])==225
+          print('Stable original country assets promotion verified:',x['tag_name'])
+          PY
+          test "$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq .tag_name)" = warder-radio-v0.2.2
+          gh api "repos/$GITHUB_REPOSITORY/releases/tags/$TAG" > build/radio-country/release-verify.json
+          python3 -B .github/scripts/promote_country_224.py \
+            --source assets/radio-country/source-20261122.json \
+            --release build/radio-country/release-verify.json \
+            --output build/radio-country/latest-confirmed.json \
+            --proof build/radio-country/verification-confirmed.json
+          cmp build/radio-country/latest.json build/radio-country/latest-confirmed.json
+      - name: Publish production latest.json only after all release verifications pass
+        if: github.ref == 'refs/heads/main'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git pull --ff-only origin main
+          mkdir -p assets/radio-country
+          if test -e assets/radio-country/latest.json; then
+            cmp assets/radio-country/latest.json build/radio-country/latest.json
+          else
+            cp build/radio-country/latest.json assets/radio-country/latest.json
+          fi
+          git add assets/radio-country/latest.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'Publish verified stable 224-country radio and 225 immutable logo/bouquet assets [skip ci]'
+            git push origin HEAD:main
+          fi
+          gh api "repos/$GITHUB_REPOSITORY/contents/assets/radio-country/latest.json?ref=main" --jq .sha
+          test "$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq .tag_name)" = warder-radio-v0.2.2
+          echo 'PRODUCTION COUNTRY LATEST INDEX PUBLISHED AND PLUGIN LATEST PRESERVED'
+      - name: Store verified proof of the exact published country assets
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Warder-Radio-224-country-stable-production-proof
+          path: |
+            build/radio-country/verification*.json
+            build/radio-country/latest*.json
+          retention-days: 90
+          if-no-files-found: error
