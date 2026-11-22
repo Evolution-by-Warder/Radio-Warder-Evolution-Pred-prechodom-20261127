@@ -29,7 +29,7 @@ jobs:
           cp "$(find "$ROOT/current" -type f -name radio-countries-bouquets.zip | head -1)" "$ROOT/world.zip"
           echo "$WORLD_SHA  $ROOT/world.zip" | sha256sum --check
           gh run download 44941542756 -n radaradio-69-approved-all-224-country-originals-40837-REVIEW-ONLY -D "$ROOT/final"
-          cp "$ROOT/final/new-world/radio-countries-bouquets.zip" "$ROOT/assets/radio-countries-bouquets.zip"
+          cp "$(find "$ROOT/final" -type f -path '*/new-world/radio-countries-bouquets.zip' -print -quit)" "$ROOT/assets/radio-countries-bouquets.zip"
           echo "$FINAL_SHA  $ROOT/assets/radio-countries-bouquets.zip" | sha256sum --check
       - name: Restore all 224 exact old country ZIPs without refetching any broadcaster artwork
         run: |
@@ -94,9 +94,11 @@ jobs:
           assert sum(v['logos_found'] for v in idx['countries'].values())==40837
           assets={}
           for cc,meta in sorted(idx['countries'].items()):
-              f=root/'final/approved-countries'/('radio-country-'+cc+'-REVIEW-NOT-PRODUCTION')/'logos'/(cc+'.zip')
-              if not f.is_file():
-                  f=root/'old'/('radio-country-'+cc+'-REVIEW-NOT-PRODUCTION')/'logos'/(cc+'.zip')
+              new=list((root/'final').rglob('radio-country-'+cc+'-REVIEW-NOT-PRODUCTION/logos/'+cc+'.zip'))
+              if len(new)>1:
+                  raise ValueError('Ambiguous final country source '+cc)
+              f=(new[0] if new else
+                 root/'old'/('radio-country-'+cc+'-REVIEW-NOT-PRODUCTION')/'logos'/(cc+'.zip'))
               if not f.is_file() or f.is_symlink():raise ValueError('Missing original country asset '+cc)
               digest=hashlib.sha256(f.read_bytes()).hexdigest()
               assert digest==meta['logo_sha256'],(cc,digest,meta['logo_sha256'])
