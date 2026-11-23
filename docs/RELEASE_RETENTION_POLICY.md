@@ -1,24 +1,20 @@
-# GitHub Releases – retention and safe cleanup
+# Warder Radio Evolution — retencia vydaní (23.11.2026)
 
-Status as of 2026-11-09. This policy is part of the cross-project Warder release hygiene programme. **It does not authorize blind automatic deletions.**
+**Záväzné schválenie vlastníka:** aktuálna ostrá verzia + najviac tri staršie ostré verzie. TEST/RC nie sú ostré verzie. Staršie binárne Releases možno zmazať iba po preukázaní bezpečného prechodu všetkých podporovaných starých inštalácií, nulových aktívnych feed odkazov a zachovanej obnovy.
 
-## Inventory
-- Repository: `Evolution-by-Warder/Radio-Warder-Evolution`
-- Observed GitHub Releases: **43**
-- Latest observed tag: `warder-radio-v0.1.9.2`
+## Ostrá štvorica prehrávača
 
-## Policy
-1. Keep at least the **five most recent stable production releases** in each actively distributed project, plus specifically identified historical milestones and any supported rollback version.
-2. Keep **every release currently referenced** by an updater, feed, installer, plugin catalog, README, documentation, published package manifest or an active user-facing URL, regardless of age.
-3. Identify stale TEST/RC builds separately; never count them as production rollback releases. A candidate can be removed only after its source and test evidence are retained and all relevant refs have been checked.
-4. Before removing a Release or its asset, inventory versions/tags/URLs and run repository-wide searches for references, validate that a currently supported installed version can still update or reinstall, and preserve a verified recovery copy.
-5. Deletion of a GitHub Release, deletion of an asset and deletion of a Git tag are **separate operations**. Never rewrite release artifacts or silently remove tags. Record actions and exact identifiers in the project progress register.
-6. Apply the policy after each new stable publication and periodically review accumulated TEST assets. Publishing automation must not delete previous versions as a side effect.
+- `warder-radio-v0.2.2` — aktuálne
+- `warder-radio-v0.2.1`
+- `warder-radio-v0.2.0`
+- `warder-radio-v0.1.9.4`
 
-## Pending cleanup
+`update/v2/stable.json` aj `update/v2/testing.json` aktuálne smerujú na verifikované `0.2.2`. GitHub `main` nemá staré IPK v `packages/`, `dist/` alebo `build/`; sú len vo vydaniach alebo dočasných CI výstupoch.
 
-The existing 43 Releases are **inventory only**, not a reviewed deletion list. First check all live updater URLs and installation dependencies, then produce an explicit keep/remove manifest. Do not delete any Release until that manifest has been validated.
+**Nezameniteľná dátová výnimka:** `radio-country-20261122` je samostatné ostré vydanie 224 krajín (world bouquet + country PNG ZIPy) s aktívnym `assets/radio-country/latest.json`. NIE JE ďalším vydaním prehrávača, nesmie byť zahrnuté do číselnej retencie a jeho obsah sa nemení.
 
+**Migrácia:** `warder-radio-v0.1.0-test11` je historický opkg bridge pre starú identitu a je stále citovaný vo vydávacom workflowe `.github/workflows/radio-test.yml`. Nemaž ho bez náhradnej reálne otestovanej migračnej cesty. Ostatné staré `0.1.9.2`, `0.1.9.3`, `0.2.0-test22` Releases čakajú na individuálne overenie externých odkazov a recovery kópií; ich existencia neznamená, že sú schválenými rollbackmi.
 
-## Cross-project scope
-Apply the same release hygiene process in FullHDGlass, PiconHub, GSU and Warder Radio. Exempt backup/archival snapshots from generic pruning. The aim is to keep release history readable without breaking installations or update feeds.
+Zachovať obľúbené, históriu, nahrávky, nastavenia, externé originálne logá a otvorený [draft PR #52](https://github.com/Evolution-by-Warder/Radio-Warder-Evolution/pull/52). Nepridávať nové IPK do `main`. GitHub tag ani historický commit nemožno prepisovať. Preveriť CI pred každým zmazaním.
+
+Spoločný aktuálny checkpoint: [FullHDGlass/docs/ECOSYSTEM-CLEANUP-CHECKPOINT-20261123.md](https://github.com/Evolution-by-Warder/FullHDGlass-Warder-Evolution/blob/main/docs/ECOSYSTEM-CLEANUP-CHECKPOINT-20261123.md).
