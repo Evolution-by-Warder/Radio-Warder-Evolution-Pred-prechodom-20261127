@@ -1,3 +1,7 @@
+## 24. 11. 2026 — Uzavretý historický REVIEW #52
+
+Na pokyn vlastníka uzavretý #52 bez merge konfliktného historického REVIEW. Ostré vydanie 0.2.2 (#53), produkčný katalóg 224 krajín / 48 219 staníc / 40 837 PNG (#54) a automatické aktualizácie 1. a 15. deň (#55) sú v main. Historická vetva a výsledky zostávajú zachované, neopakovať spracované dávky. Prvý úplný plánovaný cyklus ešte neoverený; pri ďalšom behu riešiť iba skutočné zmeny. Žiadny nový IPK.
+
 ## 22. 11. 2026 — HOTOVÉ: 224-krajinné rádio v ostrej produkcii + schválené pravidelné automatické aktualizácie
 
 - **Všetkých 224 krajín a 48 219 staníc** (40 837 originálnych rádiových PNG) je v ostrom dátovom vydaní [radio-country-20261122](https://github.com/Evolution-by-Warder/Radio-Warder-Evolution/releases/tag/radio-country-20261122). Všetkých 225 nemenných súborov ostalo pôvodných, s presnou SHA-256/veľkosťou: world ZIP 6 664 493 B, SHA `771953b41ceab46f8852f5e3219338cb1369d7f653ed7d329ad551e481f88d68`; celkom 835 703 250 B. Oficiálny feed `main/assets/radio-country/latest.json` bol publikovaný až po kontrole, [workflow #45036963424 SUCCESS](https://github.com/Evolution-by-Warder/Radio-Warder-Evolution/actions/runs/45036963424), PR #54 zlúčený.
