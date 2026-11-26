@@ -1,3 +1,9 @@
+## 26. 11. 2026 — Dokončenie jazykového auditu stabilnej verzie 0.2.2
+
+- Dokumentačný PR #61 HEAD `dedba66dc9f000313154b564b3269b4eac8c76f6`, unit CI SUCCESS; merge `9c4cbdb8280795333d41cc48bcadd42b04f126fc`. README opravené na 0.2.2.
+- Kontrola priamo na vydanom tagu `warder-radio-v0.2.2`: všetkých 21 JSON katalógov má presne 172 neprázdnych textov (3 612 položiek), rovnakú množinu kľúčov a zachované pomenované formátovacie argumenty. Zhodné texty s angličtinou sú prevažne technické názvy, názvy krajín alebo rovnaké medzinárodné výrazy; úplná lingvistická/receiver kontrola sa tým nedeklaruje.
+- Produkčný IPK 2 946 582 B, SHA-256 `1378757cca0a87c9a1ec2712817185f42aa1754b165509d50803c19dd7d1f08e`, zhodný s oboma v2 feedmi. Pôvodný publisher run 45034367710 SUCCESS. Nevydávame prázdnu 0.2.3. Žiadna zmena runtime, dátového vydania, log, harmonogramu ani používateľských údajov.
+
 ## 26. 11. 2026 — Audit stabilnej verzie 0.2.2 (schválená nočná dávka)
 
 - Main `b2947b7ed8e6d4adaa9cd1044bb874d1adcc9a26`, porovnanie `warder-radio-v0.2.2...main`: 44 commity, žiadna zmena `src/` v zozname porovnania; zmeny testov dátových balíkov nevyžadujú nový IPK. GitHub release asset `enigma2-plugin-extensions-radio-warder-evolution_0.2.2_all.ipk`, SHA-256 `1378757cca0a87c9a1ec2712817185f42aa1754b165509d50803c19dd7d1f08e` zodpovedá `update/v2/stable.json` (2 946 582 B). Starý feed `update/stable.json` ponechaný bez zásahu (release null). Binárny IPK nebol v tomto kroku nezávisle stiahnutý.
