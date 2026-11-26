@@ -1,3 +1,8 @@
+## 26. 11. 2026 — Audit stabilnej verzie 0.2.2 (schválená nočná dávka)
+
+- Main `b2947b7ed8e6d4adaa9cd1044bb874d1adcc9a26`, porovnanie `warder-radio-v0.2.2...main`: 44 commity, žiadna zmena `src/` v zozname porovnania; zmeny testov dátových balíkov nevyžadujú nový IPK. GitHub release asset `enigma2-plugin-extensions-radio-warder-evolution_0.2.2_all.ipk`, SHA-256 `1378757cca0a87c9a1ec2712817185f42aa1754b165509d50803c19dd7d1f08e` zodpovedá `update/v2/stable.json` (2 946 582 B). Starý feed `update/stable.json` ponechaný bez zásahu (release null). Binárny IPK nebol v tomto kroku nezávisle stiahnutý.
+- Runtime deklaruje 21 jazykov, anglický JSON má 172 kľúčov; úplná kontrola všetkých katalógov a kvality prekladov ešte nedoložená. README opravené na 0.2.2. Žiadne nové 0.2.3 bez runtime zmeny, žiadny zásah do dátových balíkov, log, harmonogramu alebo používateľských súborov. CI dokumentačného PR ešte čaká.
+
 ## 24. 11. 2026 — Uzavretý historický REVIEW #52
 
 Na pokyn vlastníka uzavretý #52 bez merge konfliktného historického REVIEW. Ostré vydanie 0.2.2 (#53), produkčný katalóg 224 krajín / 48 219 staníc / 40 837 PNG (#54) a automatické aktualizácie 1. a 15. deň (#55) sú v main. Historická vetva a výsledky zostávajú zachované, neopakovať spracované dávky. Prvý úplný plánovaný cyklus ešte neoverený; pri ďalšom behu riešiť iba skutočné zmeny. Žiadny nový IPK.
