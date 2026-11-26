@@ -2,9 +2,9 @@
 
 Samostatný natívny prehrávač internetových rádií pre Enigma2 / OpenATV / OpenPLi.
 
-## Stabilná verzia 0.2.1
+## Stabilná verzia 0.2.2
 
-[Oficiálne vydanie 0.2.1](https://github.com/Evolution-by-Warder/Radio-Warder-Evolution/releases/tag/warder-radio-v0.2.1)
+[Oficiálne vydanie 0.2.2](https://github.com/Evolution-by-Warder/Radio-Warder-Evolution/releases/tag/warder-radio-v0.2.2)
 
 Prehrávač používa online katalóg **Radio Browser**. Ponúka výber krajín a hudobných kategórií, sekcie Domov a Odbery, Obľúbené, Históriu, vlastné stanice, vyhľadávanie a natívne prehrávanie Enigma2 (4097).
 
