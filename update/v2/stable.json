@@ -7,6 +7,10 @@
     "tag": "warder-radio-v0.2.2",
     "url": "https://github.com/Evolution-by-Warder/Radio-Warder-Evolution/releases/download/warder-radio-v0.2.2/enigma2-plugin-extensions-radio-warder-evolution_0.2.2_all.ipk",
     "sha256": "1378757cca0a87c9a1ec2712817185f42aa1754b165509d50803c19dd7d1f08e",
+    "warder_signature": {
+      "manifest_b64": "eyJiYWxpayI6ImVuaWdtYTItcGx1Z2luLWV4dGVuc2lvbnMtcmFkaW8td2FyZGVyLWV2b2x1dGlvbiIsImNvbW1pdCI6IjczOTkwMWU5ZmEyNjkxZWNkYWRkYmU0NDYwMTMzYTc2MzYwYTVjMmUiLCJrYW5hbCI6InN0YWJsZSIsInByb2pla3QiOiJFdm9sdXRpb24tYnktV2FyZGVyL1JhZGlvLVdhcmRlci1Fdm9sdXRpb24iLCJzY2hlbWEiOjEsInNoYTI1NiI6IjEzNzg3NTdjY2EwYTg3YzlhMWVjMjcxMjgxNzE4NWY0MmFhMTc1NGIxNjU1MDlkNTA4MDNjMTlkZDdkMWYwOGUiLCJ2ZXJ6aWEiOiIwLjIuMiIsInZlcnppYV9iYWxpa2EiOiIwLjIuMi0xIn0K",
+      "podpis_b64": "HYTXITu4/T8YxDvHdsLTmUr62dsbbaSfchpqPg4YsXxxKdkJODvycKdHuCPSqndvz8ADMTFeIHmUGK6ctmKZDA=="
+    },
     "bytes": 2946582,
     "notes": "Radio Warder Evolution 0.2.2",
     "notes_i18n": {}
